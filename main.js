@@ -21,7 +21,7 @@ const LEVELS = [
     bg: { key: 'bg_1_1', path: 'assets/bar-bg0.png' },
     worldScreensWide: 1.8,
     characterHeightFraction: 0.45,
-    floorTopFraction: 0.78,
+    floorTopFraction: 0.865,
     floorBottomFraction: 0.95,
     playerStart: { xFraction: 0.08, yFraction: 0.92 },
     waves: [
@@ -35,7 +35,7 @@ const LEVELS = [
     bg: { key: 'bg_1_2', path: 'assets/bar-bg.png' },
     worldScreensWide: 1.8,
     characterHeightFraction: 0.45,
-    floorTopFraction: 0.72,
+    floorTopFraction: 0.83,
     floorBottomFraction: 0.94,
     playerStart: { xFraction: 0.08, yFraction: 0.92 },
     waves: [
@@ -50,7 +50,7 @@ const LEVELS = [
     bg: { key: 'bg_1_3', path: 'assets/bar-bg2.png' },
     worldScreensWide: 1.8,
     characterHeightFraction: 0.45,
-    floorTopFraction: 0.72,
+    floorTopFraction: 0.83,
     floorBottomFraction: 0.94,
     playerStart: { xFraction: 0.08, yFraction: 0.92 },
     waves: [
@@ -73,28 +73,28 @@ const CHARACTER_TEXTURE_H = 74;
 const PLAYER_FRAMES = {
   // Row 1 — walk cycle
   walk: [
-    { x: 21,  y: 8,   w: 38, h: 74 }, { x: 95,  y: 8,   w: 37, h: 74 },
-    { x: 168, y: 8,   w: 39, h: 74 }, { x: 240, y: 8,   w: 39, h: 74 },
-    { x: 309, y: 8,   w: 38, h: 74 }, { x: 385, y: 8,   w: 39, h: 74 },
-    { x: 460, y: 8,   w: 37, h: 74 }, { x: 532, y: 8,   w: 37, h: 74 }
+    { x: 21, y: 8, w: 38, h: 74 }, { x: 95, y: 8, w: 37, h: 74 },
+    { x: 168, y: 8, w: 39, h: 74 }, { x: 240, y: 8, w: 39, h: 74 },
+    { x: 309, y: 8, w: 38, h: 74 }, { x: 385, y: 8, w: 39, h: 74 },
+    { x: 460, y: 8, w: 37, h: 74 }, { x: 532, y: 8, w: 37, h: 74 }
   ],
   // Row 2 — run cycle
   run: [
-    { x: 22,  y: 94,  w: 38, h: 73 }, { x: 97,  y: 94,  w: 40, h: 73 },
-    { x: 166, y: 94,  w: 43, h: 73 }, { x: 239, y: 94,  w: 52, h: 73 },
-    { x: 307, y: 94,  w: 56, h: 73 }, { x: 382, y: 94,  w: 54, h: 73 },
-    { x: 459, y: 94,  w: 41, h: 73 }, { x: 531, y: 94,  w: 38, h: 73 }
+    { x: 22, y: 94, w: 38, h: 73 }, { x: 97, y: 94, w: 40, h: 73 },
+    { x: 166, y: 94, w: 43, h: 73 }, { x: 239, y: 94, w: 52, h: 73 },
+    { x: 307, y: 94, w: 56, h: 73 }, { x: 382, y: 94, w: 54, h: 73 },
+    { x: 459, y: 94, w: 41, h: 73 }, { x: 531, y: 94, w: 38, h: 73 }
   ],
   // Row 3 — attack / strike poses
   attack: [
-    { x: 20,  y: 179, w: 39, h: 74 }, { x: 92,  y: 179, w: 44, h: 74 },
+    { x: 20, y: 179, w: 39, h: 74 }, { x: 92, y: 179, w: 44, h: 74 },
     { x: 175, y: 179, w: 42, h: 74 }, { x: 239, y: 179, w: 44, h: 74 },
     { x: 314, y: 179, w: 40, h: 74 }, { x: 387, y: 179, w: 46, h: 74 },
     { x: 459, y: 179, w: 37, h: 74 }, { x: 531, y: 179, w: 37, h: 74 }
   ],
   // Row 4 — crouch poses
   crouch: [
-    { x: 29,  y: 268, w: 31, h: 61 }, { x: 102, y: 268, w: 32, h: 61 },
+    { x: 29, y: 268, w: 31, h: 61 }, { x: 102, y: 268, w: 32, h: 61 },
     { x: 176, y: 268, w: 33, h: 61 }, { x: 246, y: 268, w: 32, h: 61 },
     { x: 320, y: 268, w: 32, h: 61 }, { x: 392, y: 268, w: 33, h: 61 },
     { x: 463, y: 268, w: 33, h: 61 }, { x: 538, y: 268, w: 33, h: 61 }
@@ -104,7 +104,7 @@ const PLAYER_FRAMES = {
 // Good Vibe (post-transform happy zombie) — bright, joyful. The player and
 // "bad vibe" zombie are bitmap assets, so only the happy palette lives here.
 const COLORS = {
-  gSkin:  0xf0c89a,
+  gSkin: 0xf0c89a,
   gShirt: 0xff5577,
   gPants: 0x4080d0
 };
@@ -126,13 +126,38 @@ class GameScene extends Phaser.Scene {
     // each. Frames are non-uniform — registered as named atlas regions in
     // registerPlayerFrames() after the texture loads.
     this.load.image('player_sheet', 'assets/player_spritesheet.png');
-    // 16-col x 4-row sheet of 96x256 cells = 64 zombie variants. Each frame
-    // has its zombie standing at the bottom of the cell, which lines up with
-    // the (0.5, 1.0) origin used at spawn.
-    this.load.spritesheet('zombies', 'assets/zombie_spritesheet.png', {
-      frameWidth: 96,
+    // 16-col x 16-row animated zombie sheet (128x256 cells), 2048x4096.
+    // 16 zombie variants, each row has 8 idle + 8 walk frames.
+    // Cells are 128px wide (96px zombie + 16px padding each side).
+    // Variant V: idle = V*16..V*16+7, walk = V*16+8..V*16+15.
+    this.load.spritesheet('zombies', 'assets/zombie_all_anim_spritesheet.png', {
+      frameWidth: 128,
       frameHeight: 256
     });
+  }
+
+  registerZombieAnims() {
+    // Register idle + walk animations for each of the 16 zombie variants.
+    for (let n = 0; n < 16; n++) {
+      const idleKey = `z_idle_${n}`;
+      const walkKey = `z_walk_${n}`;
+      if (!this.anims.exists(idleKey)) {
+        this.anims.create({
+          key: idleKey,
+          frames: this.anims.generateFrameNumbers('zombies', { start: n * 16, end: n * 16 + 7 }),
+          frameRate: 8,
+          repeat: -1
+        });
+      }
+      if (!this.anims.exists(walkKey)) {
+        this.anims.create({
+          key: walkKey,
+          frames: this.anims.generateFrameNumbers('zombies', { start: n * 16 + 8, end: n * 16 + 15 }),
+          frameRate: 10,
+          repeat: -1
+        });
+      }
+    }
   }
 
   registerPlayerFrames() {
@@ -150,10 +175,10 @@ class GameScene extends Phaser.Scene {
       const frames = PLAYER_FRAMES[prefix].map((_, i) => ({ key: 'player_sheet', frame: `${prefix}_${i}` }));
       this.anims.create({ key, frames, frameRate, repeat });
     };
-    mkAnim('p_walk',   'walk',   10, -1);
-    mkAnim('p_run',    'run',    14, -1);
-    mkAnim('p_attack', 'attack', 18,  0);
-    mkAnim('p_crouch', 'crouch',  8, -1);
+    mkAnim('p_walk', 'walk', 10, -1);
+    mkAnim('p_run', 'run', 14, -1);
+    mkAnim('p_attack', 'attack', 18, 0);
+    mkAnim('p_crouch', 'crouch', 8, -1);
   }
 
   create() {
@@ -171,8 +196,12 @@ class GameScene extends Phaser.Scene {
     this.spriteH = CHARACTER_TEXTURE_H * this.characterScale;
 
     // Floor band = where character feet (sprite y, since origin is 1.0) can stand
-    this.floorTop    = this.screenH * this.level.floorTopFraction;
+    this.floorTop = this.screenH * this.level.floorTopFraction;
     this.floorBottom = this.screenH * this.level.floorBottomFraction;
+
+    // Perspective: characters at floorTop appear at 55% size, at floorBottom 100%.
+    this.perspectiveMin = 0.55;
+    this.perspectiveMax = 1.0;
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
 
@@ -180,15 +209,16 @@ class GameScene extends Phaser.Scene {
     // Anything spawned dynamically (bursts, floaters) must be added to worldLayer
     // via this.worldAdd() so it renders with the world camera.
     this.worldLayer = this.add.layer();
-    this.uiLayer    = this.add.layer();
-    this.worldAdd   = (obj) => { this.worldLayer.add(obj); return obj; };
+    this.uiLayer = this.add.layer();
+    this.worldAdd = (obj) => { this.worldLayer.add(obj); return obj; };
 
     this.createTextures();
     this.registerPlayerFrames();
+    this.registerZombieAnims();
     this.buildBackground();
 
     // ----- Player -----
-    const startX = this.worldW  * this.level.playerStart.xFraction;
+    const startX = this.worldW * this.level.playerStart.xFraction;
     const startY = this.screenH * this.level.playerStart.yFraction;
     this.player = this.physics.add.sprite(startX, startY, 'player_sheet', 'walk_0');
     this.player.setOrigin(0.5, 1.0);          // y = feet position
@@ -249,9 +279,9 @@ class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keysWASD = this.input.keyboard.addKeys('W,A,S,D');
     this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.keyR     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+    this.keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
     this.keyShift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
-    this.keyC     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
+    this.keyC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
 
     // ----- Collisions -----
     this.physics.add.overlap(this.player, this.enemies, this.handleContact, null, this);
@@ -309,10 +339,10 @@ class GameScene extends Phaser.Scene {
     const px = (x, y, c, w = 1, h = 1) => { g.fillStyle(c, 1); g.fillRect(x, y, w, h); };
 
     const legBob = frame === 1 ? 1 : 0;
-    const skin  = C.gSkin;
+    const skin = C.gSkin;
     const shirt = C.gShirt;
     const pants = C.gPants;
-    const hair  = 0x6a3020;
+    const hair = 0x6a3020;
 
     // Legs
     px(18, 60, pants, 5, 16 - legBob);
@@ -408,7 +438,7 @@ class GameScene extends Phaser.Scene {
 
     // Player portrait box — uses the first walk frame from the player sheet.
     const portrait = HUD(this.add.graphics()).setDepth(51);
-    portrait.fillStyle(0x1a0a08, 1);    portrait.fillRect(8 * u, 6 * u, 32 * u, 30 * u);
+    portrait.fillStyle(0x1a0a08, 1); portrait.fillRect(8 * u, 6 * u, 32 * u, 30 * u);
     portrait.lineStyle(1, 0xe8d4a0, 1); portrait.strokeRect(8 * u, 6 * u, 32 * u, 30 * u);
     const portImg = HUD(this.add.image(24 * u, 21 * u, 'player_sheet', 'walk_0')).setDepth(52);
     portImg.setOrigin(0.5);
@@ -526,14 +556,19 @@ class GameScene extends Phaser.Scene {
     const fromLeft = Math.random() < 0.5;
     const x = fromLeft ? view.x - 40 : view.right + 40;
     const y = Phaser.Math.Between(this.floorTop + 20, this.floorBottom - 10);
-    // Pick a random zombie variant from the 64-frame spritesheet.
-    const frame = Phaser.Math.Between(0, 63);
-    const e = this.physics.add.sprite(x, y, 'zombies', frame);
-    e.zombieFrame = frame;                    // remembered so we don't re-roll
+    const e = this.physics.add.sprite(x, y, 'zombies', 0);
+    // Pick a random zombie variant (0-15) for visual variety
+    const variant = Phaser.Math.Between(0, 15);
+    e.zombieVariant = variant;
+    e.anims.play(`z_walk_${variant}`, true);
     e.setOrigin(0.5, 1.0);                    // y = feet position (matches player)
-    e.setScale(this.characterScale);
-    // Body: legs/feet area of the 96x256 zombie cell.
-    e.body.setSize(60, 90).setOffset(18, 165);
+    // Zombie cells are 128x256 (with 16px padding). Scale based on the
+    // visible content height (~224px) to match the player's display height.
+    const zombieContentH = 224;
+    const zombieScale = this.characterScale * (CHARACTER_TEXTURE_H / zombieContentH);
+    e.setScale(zombieScale);
+    // Body: legs/feet area of the 128x256 zombie cell (content centered with 16px pad).
+    e.body.setSize(60, 90).setOffset(34, 165);
     e.state = 'attacking';                       // 'attacking' | 'transformed'
     e.speed = Phaser.Math.Between(28, 42) * this.characterScale;
     e.hp = 1;
@@ -562,7 +597,7 @@ class GameScene extends Phaser.Scene {
   handleMovement(dt) {
     const p = this.player;
     if (p.cooldown > 0) p.cooldown -= dt;
-    if (p.invuln > 0)   p.invuln -= dt;
+    if (p.invuln > 0) p.invuln -= dt;
 
     if (p.attackTimer > 0) {
       p.attackTimer -= dt;
@@ -575,38 +610,40 @@ class GameScene extends Phaser.Scene {
 
     // Movement modifiers — Shift = run (faster), C = crouch (much slower)
     const wantCrouch = this.keyC.isDown && !p.attacking;
-    const wantRun    = this.keyShift.isDown && !wantCrouch && !p.attacking;
+    const wantRun = this.keyShift.isDown && !wantCrouch && !p.attacking;
     p.crouching = wantCrouch;
-    p.running   = wantRun;
+    p.running = wantRun;
 
-    const walkSpeed   =  90 * this.characterScale;
-    const runSpeed    = 160 * this.characterScale;
-    const crouchSpeed =  35 * this.characterScale;
+    const walkSpeed = 90 * this.characterScale;
+    const runSpeed = 160 * this.characterScale;
+    const crouchSpeed = 35 * this.characterScale;
     const speed = wantCrouch ? crouchSpeed : (wantRun ? runSpeed : walkSpeed);
 
     let vx = 0, vy = 0;
     if (!p.attacking) {
-      if (this.cursors.left.isDown  || this.keysWASD.A.isDown) vx = -speed;
-      else if (this.cursors.right.isDown || this.keysWASD.D.isDown) vx =  speed;
-      if (this.cursors.up.isDown    || this.keysWASD.W.isDown) vy = -speed * 0.75;
-      else if (this.cursors.down.isDown  || this.keysWASD.S.isDown) vy =  speed * 0.75;
+      if (this.cursors.left.isDown || this.keysWASD.A.isDown) vx = -speed;
+      else if (this.cursors.right.isDown || this.keysWASD.D.isDown) vx = speed;
+      if (this.cursors.up.isDown || this.keysWASD.W.isDown) vy = -speed * 0.75;
+      else if (this.cursors.down.isDown || this.keysWASD.S.isDown) vy = speed * 0.75;
     }
     p.body.setVelocity(vx, vy);
 
     // Constrain to floor depth band + horizontal bounds
-    if (p.y < this.floorTop)     p.y = this.floorTop;
-    if (p.y > this.floorBottom)  p.y = this.floorBottom;
+    if (p.y < this.floorTop) p.y = this.floorTop;
+    if (p.y > this.floorBottom) p.y = this.floorBottom;
     const margin = 24 * this.characterScale; // half sprite-width
-    if (p.x < margin)               p.x = margin;
+    if (p.x < margin) p.x = margin;
     if (p.x > this.worldW - margin) p.x = this.worldW - margin;
 
-    // Pseudo-3D: deeper rows render below closer rows
+    // Pseudo-3D perspective: scale based on depth (Y position in floor band)
+    const pDepth = this.depthScale(p.y);
+    p.setScale(this.characterScale * pDepth);
     p.setDepth(p.y);
 
     // Facing — only flip on horizontal input so vertical-only movement keeps the last facing
     if (vx > 0) p.facing = 1;
     else if (vx < 0) p.facing = -1;
-    p.setFlipX(p.facing < 0);
+    p.setFlipX(p.facing > 0);
 
     // Animation selection (attack anim is started in handleAttack)
     if (!p.attacking) {
@@ -689,8 +726,13 @@ class GameScene extends Phaser.Scene {
           e.body.setVelocity(0, 0);
         }
 
-        // Single static frame for now — animations come later. The variant
-        // (one of 64 zombies on the sheet) was picked at spawn time.
+        // Play walk anim when moving, idle when stationary
+        const vel = e.body.velocity;
+        if (Math.abs(vel.x) > 1 || Math.abs(vel.y) > 1) {
+          e.anims.play(`z_walk_${e.zombieVariant}`, true);
+        } else {
+          e.anims.play(`z_idle_${e.zombieVariant}`, true);
+        }
         e.walkPhase += dt;
 
         // Hit flash decay
@@ -716,11 +758,25 @@ class GameScene extends Phaser.Scene {
 
       // Clamp to floor band
       if (e.state === 'attacking') {
-        if (e.y < this.floorTop)    e.y = this.floorTop;
+        if (e.y < this.floorTop) e.y = this.floorTop;
         if (e.y > this.floorBottom) e.y = this.floorBottom;
       }
+      // Perspective scaling for enemies
+      const eDepth = this.depthScale(e.y);
+      const zombieContentH = 224;
+      const baseZombieScale = this.characterScale * (CHARACTER_TEXTURE_H / zombieContentH);
+      e.setScale(baseZombieScale * eDepth);
       e.setDepth(e.y);
     });
+  }
+
+  // Returns a 0–1 perspective multiplier based on Y position in the floor band.
+  // floorBottom (closest to camera) = 1.0, floorTop (far) = perspectiveMin.
+  depthScale(y) {
+    const t = Phaser.Math.Clamp(
+      (y - this.floorTop) / (this.floorBottom - this.floorTop), 0, 1
+    );
+    return Phaser.Math.Linear(this.perspectiveMin, this.perspectiveMax, t);
   }
 
   // =====================================================================
@@ -750,7 +806,7 @@ class GameScene extends Phaser.Scene {
 
   spawnBurst(x, y) {
     const burstStart = 0.5 * this.characterScale;
-    const burstEnd   = 1.5 * this.characterScale;
+    const burstEnd = 1.5 * this.characterScale;
     const b = this.worldAdd(this.add.sprite(x, y, 'burst').setDepth(700).setScale(burstStart));
     this.tweens.add({
       targets: b, scale: burstEnd, alpha: 0, duration: 280,
@@ -758,8 +814,8 @@ class GameScene extends Phaser.Scene {
     });
     // Hearts / sparkles flying out
     const symbols = ['<3', '*', '~', '!'];
-    const colors  = ['#ff5577', '#ffe066', '#80d8ff', '#80ff80'];
-    const radius  = 44 * this.characterScale * 0.6;
+    const colors = ['#ff5577', '#ffe066', '#80d8ff', '#80ff80'];
+    const radius = 44 * this.characterScale * 0.6;
     for (let i = 0; i < 7; i++) {
       const t = this.worldAdd(this.add.text(x, y, symbols[i % symbols.length], {
         fontFamily: 'Courier New, monospace',
@@ -847,8 +903,8 @@ class GameScene extends Phaser.Scene {
 
   checkWaveComplete() {
     if (this.gameState !== 'playing') return;
-    if (this.activeEnemies > 0)         return;
-    if (this.enemiesToSpawn > 0)        return;
+    if (this.activeEnemies > 0) return;
+    if (this.enemiesToSpawn > 0) return;
     let stillAttacking = 0;
     this.enemies.children.each(e => {
       if (e.active && e.state === 'attacking') stillAttacking++;
