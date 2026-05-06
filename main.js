@@ -17,8 +17,22 @@
 const LEVELS = [
   {
     id: '1-1',
-    name: 'ON THE ROCKS — 1-1',
-    bg: { key: 'bg_1_1', path: 'assets/bar-bg.png' },
+    name: 'OUT FRONT — 1-1',
+    bg: { key: 'bg_1_1', path: 'assets/bar-bg0.png' },
+    worldScreensWide: 1.8,
+    characterHeightFraction: 0.45,
+    floorTopFraction: 0.78,
+    floorBottomFraction: 0.95,
+    playerStart: { xFraction: 0.08, yFraction: 0.92 },
+    waves: [
+      { count: 2, delay: 900 },
+      { count: 3, delay: 800 }
+    ]
+  },
+  {
+    id: '1-2',
+    name: 'ON THE ROCKS — 1-2',
+    bg: { key: 'bg_1_2', path: 'assets/bar-bg.png' },
     worldScreensWide: 1.8,
     characterHeightFraction: 0.45,
     floorTopFraction: 0.72,
@@ -31,9 +45,9 @@ const LEVELS = [
     ]
   },
   {
-    id: '1-2',
-    name: 'BACK ROOM — 1-2',
-    bg: { key: 'bg_1_2', path: 'assets/bar-bg2.png' },
+    id: '1-3',
+    name: 'BACK ROOM — 1-3',
+    bg: { key: 'bg_1_3', path: 'assets/bar-bg2.png' },
     worldScreensWide: 1.8,
     characterHeightFraction: 0.45,
     floorTopFraction: 0.72,
