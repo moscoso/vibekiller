@@ -62,52 +62,17 @@ const LEVELS = [
 ];
 
 // Texture height of a character sprite, used to derive characterScale.
-const CHARACTER_TEXTURE_H = 80;
+// Matches the FRIEND0 player bitmap (88x212). Other character bitmaps
+// (zombie, etc.) render at the same scale and will appear slightly taller
+// or shorter based on their native pixel height.
+const CHARACTER_TEXTURE_H = 212;
 
+// Good Vibe (post-transform happy zombie) — bright, joyful. The player and
+// "bad vibe" zombie are bitmap assets, so only the happy palette lives here.
 const COLORS = {
-  // Player — bearded guy with glasses, backwards cap, black tee, jeans, white sneakers
-  pSkin:    0xe8b88a,
-  pSkinDk:  0xb88060,
-  pHair:    0x2a1810,
-  pBeard:   0x1a1008,
-  pCap:     0x14110f,
-  pCapHL:   0x2a2624,
-  pCapLogo: 0xc02828,
-  pGlass:   0x080808,
-  pLens:    0x506068,
-  pTee:     0x141414,
-  pTeeHL:   0x2a2a2a,
-  pJean:    0x395276,
-  pJeanHL:  0x506e92,
-  pJeanDk:  0x223850,
-  pShoe:    0xeae6dc,
-  pShoeDk:  0x303030,
-
-  // Bad Vibe Zombie — gross, bloody, tattered shirt
-  zSkin:    0x9aa860,
-  zSkinDk:  0x6a7840,
-  zSkinHL:  0xb8c280,
-  zHair:    0x2a1810,
-  zBlood:   0x9a1818,
-  zBloodBR: 0xc83030,
-  zShirt:   0x4a5860,
-  zShirtDk: 0x2a3036,
-  zShirtHL: 0x6a7882,
-  zPants:   0x202830,
-  zPantsHL: 0x303a44,
-  zEye:     0xe0c060,
-  zEyeDk:   0x402010,
-  zTeeth:   0xc8c098,
-  zBoot:    0x0a0a0a,
-  zBootHL:  0x303030,
-
-  // Good Vibe (post-transform) — bright, joyful
-  gSkin:    0xf0c89a,
-  gShirt:   0xff5577,
-  gPants:   0x4080d0,
-  gEyes:    0x40d8ff,
-
-  text:     0xe8d4a0
+  gSkin:  0xf0c89a,
+  gShirt: 0xff5577,
+  gPants: 0x4080d0
 };
 
 class GameScene extends Phaser.Scene {
@@ -123,6 +88,8 @@ class GameScene extends Phaser.Scene {
 
   preload() {
     this.load.image(this.level.bg.key, this.level.bg.path);
+    this.load.image('friend', 'assets/FRIEND0.png');
+    this.load.image('zombie', 'assets/ZOMBIE0.png');
   }
 
   create() {
@@ -158,12 +125,12 @@ class GameScene extends Phaser.Scene {
     // ----- Player -----
     const startX = this.worldW  * this.level.playerStart.xFraction;
     const startY = this.screenH * this.level.playerStart.yFraction;
-    this.player = this.physics.add.sprite(startX, startY, 'player_idle');
+    this.player = this.physics.add.sprite(startX, startY, 'friend');
     this.player.setOrigin(0.5, 1.0);          // y = feet position
     this.player.setScale(this.characterScale);
-    // Body: feet area (last 30 of the 80px texture). Phaser scales body
-    // dimensions with sprite.scale, so these are in TEXTURE units.
-    this.player.body.setSize(36, 30).setOffset(6, 50);
+    // Body: legs/feet area of the 88x212 FRIEND0 texture. Phaser scales
+    // body dimensions with sprite.scale, so these are in TEXTURE units.
+    this.player.body.setSize(60, 80).setOffset(14, 132);
     this.player.mood = 100;
     this.player.maxMood = 100;
     this.player.attacking = false;
@@ -175,9 +142,10 @@ class GameScene extends Phaser.Scene {
     this.worldAdd(this.player);
 
     // Attack hitbox — invisible rect, enabled only during the attack window.
-    // Sized in world units (already scaled).
-    const reachW = 60 * this.characterScale;
-    const reachH = 38 * this.characterScale;
+    // Sized in world units (already scaled). Reach is in TEXTURE units of
+    // the player sprite (88x212), then scaled to world.
+    const reachW = 160 * this.characterScale;
+    const reachH = 100 * this.characterScale;
     this.attackBox = this.add.rectangle(0, 0, reachW, reachH, 0xffe066, 0);
     this.physics.add.existing(this.attackBox);
     this.attackBox.body.setAllowGravity(false);
@@ -257,276 +225,57 @@ class GameScene extends Phaser.Scene {
   // =====================================================================
 
   createTextures() {
-    this.makePlayerTexture('player_idle',   0);
-    this.makePlayerTexture('player_walk',   1);
-    this.makePlayerTexture('player_attack', 2);
-    this.makeEnemyTexture('zombie_walk1',   'sad',   0);
-    this.makeEnemyTexture('zombie_walk2',   'sad',   1);
-    this.makeEnemyTexture('zombie_happy',   'happy', 0);
+    // Player and sad-zombie sprites are bitmap assets loaded in preload()
+    // (keys: 'friend', 'zombie'). Only the post-transform happy zombie and
+    // the burst still use procedural textures.
+    this.makeEnemyTexture('zombie_happy', 'happy', 0);
     this.makeBurstTexture();
   }
 
-  makePlayerTexture(key, frame) {
-    // 48 wide, 80 tall. Origin (0,0) at top-left.
-    // frame: 0=idle, 1=walk (slight bob), 2=attack (right arm extended)
-    const g = this.add.graphics();
-    const C = COLORS;
-    const px = (x, y, c, w = 1, h = 1) => { g.fillStyle(c, 1); g.fillRect(x, y, w, h); };
-
-    const legBob = frame === 1 ? 1 : 0;
-
-    // ---- Cap (backwards baseball cap, black with red logo) ----
-    px(14, 6,  C.pCap, 20, 2);
-    px(13, 8,  C.pCap, 22, 6);
-    px(13, 14, C.pCap, 22, 2);   // brim/headband line
-    // subtle highlight on top
-    px(15, 7,  C.pCapHL, 6, 1);
-    px(15, 9,  C.pCapHL, 4, 1);
-    // small red logo
-    px(22, 10, C.pCapLogo, 4, 3);
-
-    // ---- Hair tufts peeking under the cap ----
-    px(13, 16, C.pHair, 2, 2);
-    px(33, 16, C.pHair, 2, 2);
-
-    // ---- Face (skin) ----
-    px(15, 16, C.pSkin, 18, 2);
-    px(14, 18, C.pSkin, 20, 4);
-
-    // ---- Glasses ----
-    px(15, 19, C.pGlass, 7, 1);
-    px(15, 20, C.pGlass, 1, 2);
-    px(21, 20, C.pGlass, 1, 2);
-    px(15, 22, C.pGlass, 7, 1);
-    px(26, 19, C.pGlass, 7, 1);
-    px(26, 20, C.pGlass, 1, 2);
-    px(32, 20, C.pGlass, 1, 2);
-    px(26, 22, C.pGlass, 7, 1);
-    px(22, 21, C.pGlass, 4, 1); // bridge
-    // lens highlights
-    px(17, 20, C.pLens, 2, 1);
-    px(28, 20, C.pLens, 2, 1);
-
-    // ---- Beard / mustache ----
-    px(15, 23, C.pBeard, 18, 4);
-    px(14, 24, C.pBeard, 2, 3);
-    px(32, 24, C.pBeard, 2, 3);
-    px(17, 27, C.pBeard, 14, 1);
-    // mouth slit
-    px(22, 25, 0x4a1a10, 4, 1);
-
-    // ---- Neck ----
-    px(20, 28, C.pSkin, 8, 2);
-    px(20, 29, C.pSkinDk, 8, 1);
-
-    // ---- Torso (black tee) ----
-    px(11, 30, C.pTee, 26, 22);
-    // tee shading on sleeves/sides
-    px(12, 31, C.pTeeHL, 1, 18);
-    px(35, 31, C.pTeeHL, 1, 18);
-    // small chest logo accent
-    px(22, 38, C.pCapLogo, 4, 2);
-
-    // ---- Arms ----
-    if (frame === 2) {
-      // Attack — right arm reaching out and up for the high-five
-      // left arm tucked
-      px(8, 32, C.pTee, 4, 8);
-      px(8, 40, C.pSkin, 4, 8);
-      // right arm extended
-      px(37, 28, C.pTee, 4, 4);
-      px(40, 26, C.pSkin, 5, 4);
-      px(43, 22, C.pSkin, 4, 8);
-      // spark on the palm
-      px(45, 20, 0xffe066, 2, 2);
-    } else {
-      const armBob = frame === 1 ? -1 : 0;
-      // sleeves
-      px(8, 32 + armBob, C.pTee, 3, 8);
-      px(37, 32 - armBob, C.pTee, 3, 8);
-      // forearms (skin)
-      px(8, 40 + armBob, C.pSkin, 3, 10);
-      px(37, 40 - armBob, C.pSkin, 3, 10);
-    }
-
-    // ---- Belt (subtle dark line) ----
-    px(11, 51, 0x080808, 26, 1);
-
-    // ---- Jeans ----
-    px(12, 52, C.pJean, 11, 18 - legBob);
-    px(25, 52, C.pJean, 11, 18);
-    // highlights
-    px(13, 53, C.pJeanHL, 2, 14);
-    px(26, 53, C.pJeanHL, 2, 14);
-    // crotch + outer shadow
-    px(23, 52, C.pJeanDk, 2, 16);
-    px(34, 53, C.pJeanDk, 2, 14);
-
-    // ---- Shoes (white sneakers) ----
-    px(11, 70 - legBob, C.pShoe, 13, 7);
-    px(25, 70, C.pShoe, 13, 7);
-    // sole
-    px(11, 76 - legBob, C.pShoeDk, 13, 2);
-    px(25, 76, C.pShoeDk, 13, 2);
-    // tongue accent
-    px(15, 71 - legBob, C.pShoeDk, 1, 3);
-    px(29, 71, C.pShoeDk, 1, 3);
-
-    g.generateTexture(key, 48, 80);
-    g.destroy();
-  }
-
   makeEnemyTexture(key, mood, frame) {
+    // Only the post-transform "happy" zombie still uses procedural art.
     const g = this.add.graphics();
     const C = COLORS;
-    const isHappy = mood === 'happy';
     const px = (x, y, c, w = 1, h = 1) => { g.fillStyle(c, 1); g.fillRect(x, y, w, h); };
 
     const legBob = frame === 1 ? 1 : 0;
+    const skin  = C.gSkin;
+    const shirt = C.gShirt;
+    const pants = C.gPants;
+    const hair  = 0x6a3020;
 
-    if (isHappy) {
-      // ---- Good Vibe transformed (kept simple/cheerful) ----
-      const skin  = C.gSkin;
-      const shirt = C.gShirt;
-      const pants = C.gPants;
-      const hair  = 0x6a3020;
+    // Legs
+    px(18, 60, pants, 5, 16 - legBob);
+    px(25, 60, pants, 5, 16);
+    px(18, 76 - legBob, 0x1a0a05, 5, 4);
+    px(25, 76, 0x1a0a05, 5, 4);
 
-      // Legs
-      px(18, 60, pants, 5, 16 - legBob);
-      px(25, 60, pants, 5, 16);
-      px(18, 76 - legBob, 0x1a0a05, 5, 4);
-      px(25, 76, 0x1a0a05, 5, 4);
+    // Torso
+    px(15, 38, shirt, 18, 22);
 
-      // Torso
-      px(15, 38, shirt, 18, 22);
+    // Arms (raised, alive)
+    px(11, 38, shirt, 4, 12);
+    px(11, 50, skin, 4, 4);
+    px(33, 38, shirt, 4, 12);
+    px(33, 50, skin, 4, 4);
 
-      // Arms (raised, alive)
-      px(11, 38, shirt, 4, 12);
-      px(11, 50, skin, 4, 4);
-      px(33, 38, shirt, 4, 12);
-      px(33, 50, skin, 4, 4);
+    // Neck + head + hair
+    px(21, 34, skin, 6, 4);
+    px(17, 18, skin, 14, 16);
+    px(15, 14, hair, 18, 8);
+    px(13, 18, hair, 3, 8);
+    px(32, 18, hair, 3, 8);
 
-      // Neck + head + hair
-      px(21, 34, skin, 6, 4);
-      px(17, 18, skin, 14, 16);
-      px(15, 14, hair, 18, 8);
-      px(13, 18, hair, 3, 8);
-      px(32, 18, hair, 3, 8);
-
-      // Closed-eye smile, blush, grin
-      px(19, 24, 0x1a0a05, 4, 1);
-      px(25, 24, 0x1a0a05, 4, 1);
-      px(18, 25, 0x1a0a05, 1, 1);
-      px(28, 25, 0x1a0a05, 1, 1);
-      px(17, 27, 0xff8090, 3, 2);
-      px(28, 27, 0xff8090, 3, 2);
-      px(20, 30, 0x4a1010, 8, 1);
-      px(19, 31, 0x4a1010, 1, 1);
-      px(28, 31, 0x4a1010, 1, 1);
-    } else {
-      // ---- Bad Vibe Zombie — gross, bloody, tattered ----
-
-      // Bloody exposed scalp / wound on top of head
-      px(15, 4,  C.zBlood,   18, 2);
-      px(14, 6,  C.zBlood,   20, 2);
-      px(13, 8,  C.zBloodBR, 22, 4);
-      // wound shading + drips
-      px(13, 12, C.zBlood,   22, 1);
-      px(15, 12, C.zBloodBR, 2, 2);
-      px(28, 12, C.zBloodBR, 2, 2);
-      // sparse dark hair tufts
-      px(17, 7,  C.zHair, 4, 2);
-      px(26, 7,  C.zHair, 5, 2);
-      px(13, 11, C.zHair, 1, 2);
-      px(34, 11, C.zHair, 1, 2);
-
-      // Face (sickly green)
-      px(15, 13, C.zSkin, 18, 14);
-      px(14, 14, C.zSkin, 20, 12);
-      // jaw shading
-      px(14, 18, C.zSkinDk, 1, 8);
-      px(33, 18, C.zSkinDk, 1, 8);
-      px(15, 25, C.zSkinDk, 18, 1);
-      // highlights
-      px(20, 14, C.zSkinHL, 4, 1);
-      px(15, 16, C.zSkinHL, 1, 3);
-
-      // Sunken eye sockets + glowing yellow eyes
-      px(16, 16, C.zEyeDk, 6, 4);
-      px(26, 16, C.zEyeDk, 6, 4);
-      px(18, 17, C.zEye, 3, 2);
-      px(28, 17, C.zEye, 3, 2);
-      // pupil pinpricks
-      px(19, 18, 0x1a0a05, 1, 1);
-      px(29, 18, 0x1a0a05, 1, 1);
-
-      // Snarling mouth with teeth
-      px(16, 22, C.zEyeDk, 16, 4);
-      px(17, 23, C.zTeeth, 1, 1);
-      px(19, 23, C.zTeeth, 1, 1);
-      px(21, 23, C.zTeeth, 1, 1);
-      px(23, 23, C.zTeeth, 1, 1);
-      px(25, 23, C.zTeeth, 1, 1);
-      px(27, 23, C.zTeeth, 1, 1);
-      px(29, 23, C.zTeeth, 1, 1);
-      px(31, 23, C.zTeeth, 1, 1);
-      // bloody drool around mouth
-      px(18, 26, C.zBlood, 12, 1);
-      px(20, 27, C.zBlood, 8, 1);
-      px(22, 28, C.zBloodBR, 4, 1);
-      px(17, 26, C.zBlood, 1, 2);
-      px(30, 26, C.zBlood, 1, 2);
-
-      // Neck
-      px(20, 29, C.zSkinDk, 8, 1);
-      px(20, 30, C.zSkin, 8, 1);
-
-      // Torso (tattered shirt, greyish-blue)
-      px(11, 31, C.zShirt, 26, 20);
-      // shirt highlight/shadow
-      px(12, 32, C.zShirtHL, 1, 16);
-      px(35, 32, C.zShirtHL, 1, 16);
-      // ragged hem
-      px(11, 49, C.zShirtDk, 4, 2);
-      px(17, 49, C.zShirtDk, 4, 2);
-      px(23, 49, C.zShirtDk, 4, 2);
-      px(29, 49, C.zShirtDk, 4, 2);
-      px(35, 49, C.zShirtDk, 2, 2);
-      // big torn wound on chest
-      px(18, 36, C.zBlood,   12, 6);
-      px(20, 35, C.zBlood,    8, 1);
-      px(20, 42, C.zBloodBR,  8, 1);
-      px(22, 38, C.zBloodBR,  4, 2);
-      // small splatters
-      px(13, 33, C.zBlood, 2, 1);
-      px(14, 41, C.zBlood, 1, 1);
-      px(33, 38, C.zBlood, 2, 1);
-      px(32, 45, C.zBlood, 1, 1);
-
-      // Arms (drooped, with bloody hands)
-      px(8,  33, C.zShirt, 3, 12);
-      px(37, 33, C.zShirt, 3, 12);
-      px(8,  45, C.zSkin,  3, 5);
-      px(37, 45, C.zSkin,  3, 5);
-      // ragged sleeve edges
-      px(8,  44, C.zShirtDk, 3, 1);
-      px(37, 44, C.zShirtDk, 3, 1);
-      // bloody hands
-      px(8,  50, C.zBlood, 3, 2);
-      px(37, 50, C.zBlood, 3, 2);
-
-      // Pants (dark navy)
-      px(12, 52, C.zPants, 11, 18 - legBob);
-      px(25, 52, C.zPants, 11, 18);
-      px(13, 53, C.zPantsHL, 1, 14);
-      px(26, 53, C.zPantsHL, 1, 14);
-
-      // Boots
-      px(11, 70 - legBob, C.zBoot, 13, 8);
-      px(25, 70, C.zBoot, 13, 8);
-      px(11, 76 - legBob, C.zBootHL, 13, 2);
-      px(25, 76, C.zBootHL, 13, 2);
-    }
+    // Closed-eye smile, blush, grin
+    px(19, 24, 0x1a0a05, 4, 1);
+    px(25, 24, 0x1a0a05, 4, 1);
+    px(18, 25, 0x1a0a05, 1, 1);
+    px(28, 25, 0x1a0a05, 1, 1);
+    px(17, 27, 0xff8090, 3, 2);
+    px(28, 27, 0xff8090, 3, 2);
+    px(20, 30, 0x4a1010, 8, 1);
+    px(19, 31, 0x4a1010, 1, 1);
+    px(28, 31, 0x4a1010, 1, 1);
 
     g.generateTexture(key, 48, 80);
     g.destroy();
@@ -587,18 +336,15 @@ class GameScene extends Phaser.Scene {
     strip.fillStyle(0x000000, 0.45);
     strip.fillRect(0, 0, this.W, 40 * u);
 
-    // Player portrait box
+    // Player portrait box — head/shoulders crop of the FRIEND0 bitmap.
     const portrait = HUD(this.add.graphics()).setDepth(51);
-    portrait.fillStyle(0x1a0a08, 1); portrait.fillRect(8 * u, 6 * u, 32 * u, 30 * u);
+    portrait.fillStyle(0x1a0a08, 1);    portrait.fillRect(8 * u, 6 * u, 32 * u, 30 * u);
     portrait.lineStyle(1, 0xe8d4a0, 1); portrait.strokeRect(8 * u, 6 * u, 32 * u, 30 * u);
-    portrait.fillStyle(COLORS.pSkin, 1);    portrait.fillRect(14 * u, 18 * u, 20 * u, 12 * u);
-    portrait.fillStyle(COLORS.pCap, 1);     portrait.fillRect(14 * u, 11 * u, 20 * u, 7 * u);
-    portrait.fillStyle(COLORS.pCapLogo, 1); portrait.fillRect(22 * u, 13 * u, 4 * u, 3 * u);
-    portrait.fillStyle(COLORS.pBeard, 1);   portrait.fillRect(15 * u, 24 * u, 18 * u, 5 * u);
-    portrait.fillStyle(COLORS.pGlass, 1);
-    portrait.fillRect(16 * u, 21 * u, 6 * u, 2 * u);
-    portrait.fillRect(26 * u, 21 * u, 6 * u, 2 * u);
-    portrait.fillRect(22 * u, 22 * u, 4 * u, 1 * u);
+    const portImg = HUD(this.add.image(24 * u, 21 * u, 'friend')).setDepth(52);
+    // FRIEND0 is 88x212; show the top ~88x88 (head+shoulders) inside the 32x30 box.
+    portImg.setCrop(0, 0, 88, 88);
+    portImg.setOrigin(0.5);
+    portImg.setScale((28 * u) / 88);
 
     HUD(this.add.text(46 * u, 5 * u, '1P', {
       fontFamily: 'Courier New, monospace',
@@ -711,10 +457,11 @@ class GameScene extends Phaser.Scene {
     const fromLeft = Math.random() < 0.5;
     const x = fromLeft ? view.x - 40 : view.right + 40;
     const y = Phaser.Math.Between(this.floorTop + 20, this.floorBottom - 10);
-    const e = this.physics.add.sprite(x, y, 'zombie_walk1');
+    const e = this.physics.add.sprite(x, y, 'zombie');
     e.setOrigin(0.5, 1.0);                    // y = feet position (matches player)
     e.setScale(this.characterScale);
-    e.body.setSize(36, 30).setOffset(6, 50);
+    // Body: legs/feet area of the 107x222 ZOMBIE0 texture.
+    e.body.setSize(70, 80).setOffset(18, 142);
     e.state = 'attacking';                       // 'attacking' | 'transformed'
     e.speed = Phaser.Math.Between(28, 42) * this.characterScale;
     e.hp = 1;
@@ -779,15 +526,10 @@ class GameScene extends Phaser.Scene {
     else if (vx < 0) p.facing = -1;
     p.setFlipX(p.facing < 0);
 
-    // Walk-cycle (idle ↔ walk frames)
+    // Single static frame for now — animations come later.
     if (!p.attacking) {
-      if (vx !== 0 || vy !== 0) {
-        p.walkPhase += dt;
-        const f = Math.floor(p.walkPhase / 120) % 2;
-        p.setTexture(f === 0 ? 'player_idle' : 'player_walk');
-      } else {
-        p.setTexture('player_idle');
-      }
+      if (vx !== 0 || vy !== 0) p.walkPhase += dt;
+      p.setTexture('friend');
     }
 
     // Invuln flicker
@@ -801,12 +543,13 @@ class GameScene extends Phaser.Scene {
       p.attacking = true;
       p.attackTimer = 220;
       p.cooldown = 320;
-      p.setTexture('player_attack');
+      // No attack frame yet — keep base sprite; animations come later.
+      p.setTexture('friend');
       this.currentAttackHits.clear();
 
       // Position the hitbox at the player's hand height (~midbody, slightly above center).
       // With origin (0.5, 1.0): sprite center = p.y - spriteH/2, "hand" ≈ p.y - spriteH * 0.55
-      const offX = p.facing * 30 * this.characterScale;
+      const offX = p.facing * 80 * this.characterScale;
       const handY = p.y - this.spriteH * 0.55;
       this.attackBox.x = p.x + offX;
       this.attackBox.y = handY;
@@ -856,10 +599,9 @@ class GameScene extends Phaser.Scene {
           e.body.setVelocity(0, 0);
         }
 
-        // Walk-cycle
+        // Single static frame for now — animations come later.
         e.walkPhase += dt;
-        const f = Math.floor(e.walkPhase / 180) % 2;
-        e.setTexture(f === 0 ? 'zombie_walk1' : 'zombie_walk2');
+        e.setTexture('zombie');
 
         // Hit flash decay
         if (e.hitFlash > 0) {
@@ -871,8 +613,7 @@ class GameScene extends Phaser.Scene {
         // Walk off-screen toward the nearest exit, bobbing happily
         e.body.setVelocity(e.exitDir * 30 * this.characterScale, 0);
         e.walkPhase += dt;
-        const f = Math.floor(e.walkPhase / 180) % 2;
-        e.setTexture(f === 0 ? 'zombie_happy' : 'zombie_happy');
+        e.setTexture('zombie_happy');
         e.y = e.transformedBaseY + Math.sin(e.walkPhase / 90) * (this.characterScale * 0.8);
         e.setFlipX(e.exitDir > 0);
         if (e.x < -60 || e.x > this.worldW + 60) {
