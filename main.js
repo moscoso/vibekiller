@@ -15,8 +15,10 @@ const LEVELS = [
     id: '1-1',
     name: 'ON THE ROCKS — 1-1',
     bg: { key: 'bg_1_1', path: 'assets/bar-bg.png' },
-    width: 2000,
-    height: 666,
+    // Full playable space — matches the bg image dimensions
+    world:    { width: 2000, height: 666 },
+    // Camera/canvas size — 16:9 of 666 nearly fills a 1080p screen under Scale.FIT
+    viewport: { width: 1184, height: 666 },
     floorTop: 430,
     floorBottom: 620,
     playerStart: { x: 260, y: 580 },
@@ -66,11 +68,17 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Viewport (camera/screen) dimensions
     this.W = this.scale.width;
     this.H = this.scale.height;
+    // World (full playable level) dimensions — wider than viewport, camera scrolls
+    this.worldW = this.level.world.width;
+    this.worldH = this.level.world.height;
 
     this.floorTop    = this.level.floorTop;
     this.floorBottom = this.level.floorBottom;
+
+    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
 
     this.createTextures();
     this.buildBackground();
@@ -126,6 +134,12 @@ class GameScene extends Phaser.Scene {
     // ----- Collisions -----
     this.physics.add.overlap(this.player, this.enemies, this.handleContact, null, this);
     this.physics.add.overlap(this.attackBox, this.enemies, this.handleHit, null, this);
+
+    // ----- Camera: world is wider than viewport; follow the player horizontally.
+    // Vertical lerp is 0 because viewport.height === world.height (no vertical scroll).
+    const cam = this.cameras.main;
+    cam.setBounds(0, 0, this.worldW, this.worldH);
+    cam.startFollow(this.player, true, 0.12, 0);
 
     this.createHUD();
 
@@ -302,9 +316,9 @@ class GameScene extends Phaser.Scene {
   // =====================================================================
 
   buildBackground() {
+    // Draw at native size — image IS the world, camera reveals a slice
     this.add.image(0, 0, this.level.bg.key)
       .setOrigin(0, 0)
-      .setDisplaySize(this.W, this.H)
       .setDepth(0);
   }
 
@@ -313,13 +327,17 @@ class GameScene extends Phaser.Scene {
   // =====================================================================
 
   createHUD() {
+    // All HUD elements get setScrollFactor(0) so they stay pinned to the
+    // screen instead of scrolling with the world camera.
+    const HUD = (obj) => obj.setScrollFactor(0);
+
     // Top strip
-    const strip = this.add.graphics().setDepth(50);
+    const strip = HUD(this.add.graphics()).setDepth(50);
     strip.fillStyle(0x000000, 0.45);
     strip.fillRect(0, 0, this.W, 40);
 
     // Player portrait box (matches concept-art top-left widget)
-    const portrait = this.add.graphics().setDepth(51);
+    const portrait = HUD(this.add.graphics()).setDepth(51);
     portrait.fillStyle(0x1a0a08, 1); portrait.fillRect(8, 6, 32, 30);
     portrait.lineStyle(1, 0xe8d4a0, 1); portrait.strokeRect(8, 6, 32, 30);
     portrait.fillStyle(COLORS.pSkin, 1); portrait.fillRect(14, 16, 20, 16);
@@ -328,54 +346,54 @@ class GameScene extends Phaser.Scene {
     portrait.fillRect(18, 23, 2, 1);
     portrait.fillRect(28, 23, 2, 1);
 
-    this.add.text(46, 5, '1P', {
+    HUD(this.add.text(46, 5, '1P', {
       fontFamily: 'Courier New, monospace',
       fontSize: '12px', color: '#e83838', fontStyle: 'bold'
-    }).setDepth(52);
-    this.add.text(46, 19, 'MOOD', {
+    })).setDepth(52);
+    HUD(this.add.text(46, 19, 'MOOD', {
       fontFamily: 'Courier New, monospace',
       fontSize: '9px', color: '#e8d4a0'
-    }).setDepth(52);
+    })).setDepth(52);
 
     // Mood bar
-    const frame = this.add.graphics().setDepth(52);
+    const frame = HUD(this.add.graphics()).setDepth(52);
     frame.lineStyle(1, 0xe8d4a0, 1);
     frame.strokeRect(85, 19, 160, 10);
-    this.moodBar = this.add.graphics().setDepth(52);
+    this.moodBar = HUD(this.add.graphics()).setDepth(52);
 
     // Score (top center)
-    this.add.text(this.W / 2, 5, 'SCORE', {
+    HUD(this.add.text(this.W / 2, 5, 'SCORE', {
       fontFamily: 'Courier New, monospace',
       fontSize: '10px', color: '#e8b040', fontStyle: 'bold'
-    }).setOrigin(0.5, 0).setDepth(52);
-    this.scoreText = this.add.text(this.W / 2, 17, '0000000', {
+    })).setOrigin(0.5, 0).setDepth(52);
+    this.scoreText = HUD(this.add.text(this.W / 2, 17, '0000000', {
       fontFamily: 'Courier New, monospace',
       fontSize: '14px', color: '#ffe066', fontStyle: 'bold'
-    }).setOrigin(0.5, 0).setDepth(52);
+    })).setOrigin(0.5, 0).setDepth(52);
 
     // Wave (top right)
-    this.waveText = this.add.text(this.W - 12, 8, 'WAVE -/-', {
+    this.waveText = HUD(this.add.text(this.W - 12, 8, 'WAVE -/-', {
       fontFamily: 'Courier New, monospace',
       fontSize: '12px', color: '#e8d4a0', fontStyle: 'bold'
-    }).setOrigin(1, 0).setDepth(52);
+    })).setOrigin(1, 0).setDepth(52);
 
     // Level label (bottom)
-    this.add.text(this.W / 2, this.H - 18, this.level.name, {
+    HUD(this.add.text(this.W / 2, this.H - 18, this.level.name, {
       fontFamily: 'Courier New, monospace',
       fontSize: '12px', color: '#e8d4a0'
-    }).setOrigin(0.5, 0).setDepth(52);
+    })).setOrigin(0.5, 0).setDepth(52);
 
     // Center message (used for wave intro / game over / clear)
-    this.centerMsg = this.add.text(this.W / 2, this.H / 2 - 30, '', {
+    this.centerMsg = HUD(this.add.text(this.W / 2, this.H / 2 - 30, '', {
       fontFamily: 'Courier New, monospace',
       fontSize: '34px', color: '#ffe066',
       stroke: '#1a0a0a', strokeThickness: 6, fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(60).setVisible(false);
-    this.subMsg = this.add.text(this.W / 2, this.H / 2 + 12, '', {
+    })).setOrigin(0.5).setDepth(60).setVisible(false);
+    this.subMsg = HUD(this.add.text(this.W / 2, this.H / 2 + 12, '', {
       fontFamily: 'Courier New, monospace',
       fontSize: '14px', color: '#e8d4a0',
       stroke: '#1a0a0a', strokeThickness: 4
-    }).setOrigin(0.5).setDepth(60).setVisible(false);
+    })).setOrigin(0.5).setDepth(60).setVisible(false);
 
     this.updateMoodBar();
     this.updateScore();
@@ -432,8 +450,10 @@ class GameScene extends Phaser.Scene {
     if (this.gameState !== 'playing') return;
     this.enemiesToSpawn = Math.max(0, this.enemiesToSpawn - 1);
 
-    const fromLeft = Math.random() < 0.3;
-    const x = fromLeft ? -40 : this.W + 40;
+    // Spawn just off the camera viewport so enemies always come from a visible edge
+    const cam = this.cameras.main;
+    const fromLeft = Math.random() < 0.5;
+    const x = fromLeft ? cam.scrollX - 40 : cam.scrollX + cam.width + 40;
     const y = Phaser.Math.Between(this.floorTop + 20, this.floorBottom - 10);
     const e = this.physics.add.sprite(x, y, 'zombie_walk1');
     e.body.setSize(36, 30).setOffset(6, 50);
@@ -489,7 +509,7 @@ class GameScene extends Phaser.Scene {
     if (p.y < this.floorTop)     p.y = this.floorTop;
     if (p.y > this.floorBottom)  p.y = this.floorBottom;
     if (p.x < 30)                p.x = 30;
-    if (p.x > this.W - 30)       p.x = this.W - 30;
+    if (p.x > this.worldW - 30)  p.x = this.worldW - 30;
 
     // Pseudo-3D: deeper rows render below closer rows
     p.setDepth(p.y);
@@ -593,7 +613,7 @@ class GameScene extends Phaser.Scene {
         e.setTexture(f === 0 ? 'zombie_happy' : 'zombie_happy');
         e.y = e.transformedBaseY + Math.sin(e.walkPhase / 90) * 3;
         e.setFlipX(e.exitDir > 0);
-        if (e.x < -60 || e.x > this.W + 60) {
+        if (e.x < -60 || e.x > this.worldW + 60) {
           this.activeEnemies--;
           e.destroy();
           this.checkWaveComplete();
@@ -664,7 +684,7 @@ class GameScene extends Phaser.Scene {
     e.state = 'transformed';
     e.setTexture('zombie_happy');
     e.body.setVelocity(0, 0);
-    e.exitDir = e.x < this.W / 2 ? -1 : 1;
+    e.exitDir = e.x < this.worldW / 2 ? -1 : 1;
     e.transformedBaseY = e.y;
 
     this.score += 200;
@@ -767,8 +787,9 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: BOOT_LEVEL.width,
-    height: BOOT_LEVEL.height
+    // Canvas size = camera viewport. The world (level.world) is wider; camera scrolls.
+    width: BOOT_LEVEL.viewport.width,
+    height: BOOT_LEVEL.viewport.height
   },
   physics: {
     default: 'arcade',
