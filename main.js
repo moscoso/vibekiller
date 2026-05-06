@@ -65,27 +65,49 @@ const LEVELS = [
 const CHARACTER_TEXTURE_H = 80;
 
 const COLORS = {
-  // Player (dark hair, black tee, jeans — matches concept art)
-  pSkin:  0xe8b895,
-  pHair:  0x2d1810,
-  pShirt: 0x1f1f1f,
-  pJeans: 0x2b4870,
-  pBoots: 0x1a0e08,
+  // Player — bearded guy with glasses, backwards cap, black tee, jeans, white sneakers
+  pSkin:    0xe8b88a,
+  pSkinDk:  0xb88060,
+  pHair:    0x2a1810,
+  pBeard:   0x1a1008,
+  pCap:     0x14110f,
+  pCapHL:   0x2a2624,
+  pCapLogo: 0xc02828,
+  pGlass:   0x080808,
+  pLens:    0x506068,
+  pTee:     0x141414,
+  pTeeHL:   0x2a2a2a,
+  pJean:    0x395276,
+  pJeanHL:  0x506e92,
+  pJeanDk:  0x223850,
+  pShoe:    0xeae6dc,
+  pShoeDk:  0x303030,
 
-  // Bad Vibe Zombie — sad, slumped, sickly green-grey
-  zSkin:  0x7a8870,
-  zHair:  0x404038,
-  zShirt: 0x484848,
-  zPants: 0x2a2a30,
-  zEyes:  0xc8c060,
+  // Bad Vibe Zombie — gross, bloody, tattered shirt
+  zSkin:    0x9aa860,
+  zSkinDk:  0x6a7840,
+  zSkinHL:  0xb8c280,
+  zHair:    0x2a1810,
+  zBlood:   0x9a1818,
+  zBloodBR: 0xc83030,
+  zShirt:   0x4a5860,
+  zShirtDk: 0x2a3036,
+  zShirtHL: 0x6a7882,
+  zPants:   0x202830,
+  zPantsHL: 0x303a44,
+  zEye:     0xe0c060,
+  zEyeDk:   0x402010,
+  zTeeth:   0xc8c098,
+  zBoot:    0x0a0a0a,
+  zBootHL:  0x303030,
 
   // Good Vibe (post-transform) — bright, joyful
-  gSkin:  0xf0c89a,
-  gShirt: 0xff5577,
-  gPants: 0x4080d0,
-  gEyes:  0x40d8ff,
+  gSkin:    0xf0c89a,
+  gShirt:   0xff5577,
+  gPants:   0x4080d0,
+  gEyes:    0x40d8ff,
 
-  text:   0xe8d4a0
+  text:     0xe8d4a0
 };
 
 class GameScene extends Phaser.Scene {
@@ -253,44 +275,102 @@ class GameScene extends Phaser.Scene {
 
     const legBob = frame === 1 ? 1 : 0;
 
-    // Legs (jeans + boots)
-    px(18, 60, C.pJeans, 5, 16 - legBob);
-    px(25, 60, C.pJeans, 5, 16);
-    px(18, 76 - legBob, C.pBoots, 5, 4);
-    px(25, 76, C.pBoots, 5, 4);
+    // ---- Cap (backwards baseball cap, black with red logo) ----
+    px(14, 6,  C.pCap, 20, 2);
+    px(13, 8,  C.pCap, 22, 6);
+    px(13, 14, C.pCap, 22, 2);   // brim/headband line
+    // subtle highlight on top
+    px(15, 7,  C.pCapHL, 6, 1);
+    px(15, 9,  C.pCapHL, 4, 1);
+    // small red logo
+    px(22, 10, C.pCapLogo, 4, 3);
 
-    // Belt + torso (black tee)
-    px(15, 38, C.pShirt, 18, 22);
-    px(15, 58, 0x1a0a05, 18, 2);
+    // ---- Hair tufts peeking under the cap ----
+    px(13, 16, C.pHair, 2, 2);
+    px(33, 16, C.pHair, 2, 2);
 
-    // Arms
+    // ---- Face (skin) ----
+    px(15, 16, C.pSkin, 18, 2);
+    px(14, 18, C.pSkin, 20, 4);
+
+    // ---- Glasses ----
+    px(15, 19, C.pGlass, 7, 1);
+    px(15, 20, C.pGlass, 1, 2);
+    px(21, 20, C.pGlass, 1, 2);
+    px(15, 22, C.pGlass, 7, 1);
+    px(26, 19, C.pGlass, 7, 1);
+    px(26, 20, C.pGlass, 1, 2);
+    px(32, 20, C.pGlass, 1, 2);
+    px(26, 22, C.pGlass, 7, 1);
+    px(22, 21, C.pGlass, 4, 1); // bridge
+    // lens highlights
+    px(17, 20, C.pLens, 2, 1);
+    px(28, 20, C.pLens, 2, 1);
+
+    // ---- Beard / mustache ----
+    px(15, 23, C.pBeard, 18, 4);
+    px(14, 24, C.pBeard, 2, 3);
+    px(32, 24, C.pBeard, 2, 3);
+    px(17, 27, C.pBeard, 14, 1);
+    // mouth slit
+    px(22, 25, 0x4a1a10, 4, 1);
+
+    // ---- Neck ----
+    px(20, 28, C.pSkin, 8, 2);
+    px(20, 29, C.pSkinDk, 8, 1);
+
+    // ---- Torso (black tee) ----
+    px(11, 30, C.pTee, 26, 22);
+    // tee shading on sleeves/sides
+    px(12, 31, C.pTeeHL, 1, 18);
+    px(35, 31, C.pTeeHL, 1, 18);
+    // small chest logo accent
+    px(22, 38, C.pCapLogo, 4, 2);
+
+    // ---- Arms ----
     if (frame === 2) {
-      // Attack pose — left arm tucked, right arm reaching out for the high-five
-      px(13, 40, C.pShirt, 4, 14);
-      px(13, 54, C.pSkin, 4, 4);
-      px(33, 36, C.pShirt, 4, 6);
-      px(37, 34, C.pSkin, 6, 8);
-      px(43, 30, C.pSkin, 4, 12); // hand
-      // Spark on the palm
-      px(45, 28, 0xffe066, 2, 2);
+      // Attack — right arm reaching out and up for the high-five
+      // left arm tucked
+      px(8, 32, C.pTee, 4, 8);
+      px(8, 40, C.pSkin, 4, 8);
+      // right arm extended
+      px(37, 28, C.pTee, 4, 4);
+      px(40, 26, C.pSkin, 5, 4);
+      px(43, 22, C.pSkin, 4, 8);
+      // spark on the palm
+      px(45, 20, 0xffe066, 2, 2);
     } else {
       const armBob = frame === 1 ? -1 : 0;
-      px(11, 40 + armBob, C.pShirt, 4, 14);
-      px(11, 54 + armBob, C.pSkin, 4, 4);
-      px(33, 40 - armBob, C.pShirt, 4, 14);
-      px(33, 54 - armBob, C.pSkin, 4, 4);
+      // sleeves
+      px(8, 32 + armBob, C.pTee, 3, 8);
+      px(37, 32 - armBob, C.pTee, 3, 8);
+      // forearms (skin)
+      px(8, 40 + armBob, C.pSkin, 3, 10);
+      px(37, 40 - armBob, C.pSkin, 3, 10);
     }
 
-    // Neck + head + hair
-    px(21, 34, C.pSkin, 6, 4);
-    px(17, 18, C.pSkin, 14, 16);
-    px(15, 14, C.pHair, 18, 8);
-    px(13, 18, C.pHair, 4, 6);
-    px(31, 18, C.pHair, 4, 6);
-    // Eyes + mouth
-    px(20, 24, 0x1a0a05, 2, 2);
-    px(26, 24, 0x1a0a05, 2, 2);
-    px(22, 30, 0x6a3020, 4, 1);
+    // ---- Belt (subtle dark line) ----
+    px(11, 51, 0x080808, 26, 1);
+
+    // ---- Jeans ----
+    px(12, 52, C.pJean, 11, 18 - legBob);
+    px(25, 52, C.pJean, 11, 18);
+    // highlights
+    px(13, 53, C.pJeanHL, 2, 14);
+    px(26, 53, C.pJeanHL, 2, 14);
+    // crotch + outer shadow
+    px(23, 52, C.pJeanDk, 2, 16);
+    px(34, 53, C.pJeanDk, 2, 14);
+
+    // ---- Shoes (white sneakers) ----
+    px(11, 70 - legBob, C.pShoe, 13, 7);
+    px(25, 70, C.pShoe, 13, 7);
+    // sole
+    px(11, 76 - legBob, C.pShoeDk, 13, 2);
+    px(25, 76, C.pShoeDk, 13, 2);
+    // tongue accent
+    px(15, 71 - legBob, C.pShoeDk, 1, 3);
+    px(29, 71, C.pShoeDk, 1, 3);
 
     g.generateTexture(key, 48, 80);
     g.destroy();
@@ -300,50 +380,40 @@ class GameScene extends Phaser.Scene {
     const g = this.add.graphics();
     const C = COLORS;
     const isHappy = mood === 'happy';
-    const skin  = isHappy ? C.gSkin  : C.zSkin;
-    const shirt = isHappy ? C.gShirt : C.zShirt;
-    const pants = isHappy ? C.gPants : C.zPants;
-    const eye   = isHappy ? C.gEyes  : C.zEyes;
-    const hair  = isHappy ? 0x6a3020 : C.zHair;
     const px = (x, y, c, w = 1, h = 1) => { g.fillStyle(c, 1); g.fillRect(x, y, w, h); };
 
     const legBob = frame === 1 ? 1 : 0;
-    const slump  = isHappy ? 0 : 2; // sad zombies slump forward
 
-    // Legs
-    px(18, 60, pants, 5, 16 - legBob);
-    px(25, 60, pants, 5, 16);
-    px(18, 76 - legBob, 0x1a0a05, 5, 4);
-    px(25, 76, 0x1a0a05, 5, 4);
-
-    // Torso
-    px(15, 38 + slump, shirt, 18, 22 - slump);
-
-    // Arms
     if (isHappy) {
-      // Slightly raised, alive
+      // ---- Good Vibe transformed (kept simple/cheerful) ----
+      const skin  = C.gSkin;
+      const shirt = C.gShirt;
+      const pants = C.gPants;
+      const hair  = 0x6a3020;
+
+      // Legs
+      px(18, 60, pants, 5, 16 - legBob);
+      px(25, 60, pants, 5, 16);
+      px(18, 76 - legBob, 0x1a0a05, 5, 4);
+      px(25, 76, 0x1a0a05, 5, 4);
+
+      // Torso
+      px(15, 38, shirt, 18, 22);
+
+      // Arms (raised, alive)
       px(11, 38, shirt, 4, 12);
       px(11, 50, skin, 4, 4);
       px(33, 38, shirt, 4, 12);
       px(33, 50, skin, 4, 4);
-    } else {
-      // Drooped
-      px(11, 42, shirt, 4, 14);
-      px(11, 56, skin, 4, 4);
-      px(33, 42, shirt, 4, 14);
-      px(33, 56, skin, 4, 4);
-    }
 
-    // Neck + head
-    px(21, 34 + slump, skin, 6, 4);
-    px(17, 18 + slump, skin, 14, 16);
-    // Messy hair
-    px(15, 14 + slump, hair, 18, 8);
-    px(13, 18 + slump, hair, 3, 8);
-    px(32, 18 + slump, hair, 3, 8);
+      // Neck + head + hair
+      px(21, 34, skin, 6, 4);
+      px(17, 18, skin, 14, 16);
+      px(15, 14, hair, 18, 8);
+      px(13, 18, hair, 3, 8);
+      px(32, 18, hair, 3, 8);
 
-    if (isHappy) {
-      // Closed-eye smile, blush, big grin
+      // Closed-eye smile, blush, grin
       px(19, 24, 0x1a0a05, 4, 1);
       px(25, 24, 0x1a0a05, 4, 1);
       px(18, 25, 0x1a0a05, 1, 1);
@@ -354,19 +424,108 @@ class GameScene extends Phaser.Scene {
       px(19, 31, 0x4a1010, 1, 1);
       px(28, 31, 0x4a1010, 1, 1);
     } else {
-      // Sunken zombie eyes, frown, stink lines
-      px(19, 23 + slump, 0x2a2a2a, 4, 3);
-      px(25, 23 + slump, 0x2a2a2a, 4, 3);
-      px(20, 24 + slump, eye, 2, 1);
-      px(26, 24 + slump, eye, 2, 1);
-      px(20, 31 + slump, 0x2a1a10, 8, 1);
-      px(19, 30 + slump, 0x2a1a10, 1, 1);
-      px(28, 30 + slump, 0x2a1a10, 1, 1);
-      // Stink wisps drifting up from the head
-      px(14, 14 + slump, 0x6a8a60, 1, 4);
-      px(33, 14 + slump, 0x6a8a60, 1, 4);
-      px(13, 12 + slump, 0x6a8a60, 1, 2);
-      px(34, 12 + slump, 0x6a8a60, 1, 2);
+      // ---- Bad Vibe Zombie — gross, bloody, tattered ----
+
+      // Bloody exposed scalp / wound on top of head
+      px(15, 4,  C.zBlood,   18, 2);
+      px(14, 6,  C.zBlood,   20, 2);
+      px(13, 8,  C.zBloodBR, 22, 4);
+      // wound shading + drips
+      px(13, 12, C.zBlood,   22, 1);
+      px(15, 12, C.zBloodBR, 2, 2);
+      px(28, 12, C.zBloodBR, 2, 2);
+      // sparse dark hair tufts
+      px(17, 7,  C.zHair, 4, 2);
+      px(26, 7,  C.zHair, 5, 2);
+      px(13, 11, C.zHair, 1, 2);
+      px(34, 11, C.zHair, 1, 2);
+
+      // Face (sickly green)
+      px(15, 13, C.zSkin, 18, 14);
+      px(14, 14, C.zSkin, 20, 12);
+      // jaw shading
+      px(14, 18, C.zSkinDk, 1, 8);
+      px(33, 18, C.zSkinDk, 1, 8);
+      px(15, 25, C.zSkinDk, 18, 1);
+      // highlights
+      px(20, 14, C.zSkinHL, 4, 1);
+      px(15, 16, C.zSkinHL, 1, 3);
+
+      // Sunken eye sockets + glowing yellow eyes
+      px(16, 16, C.zEyeDk, 6, 4);
+      px(26, 16, C.zEyeDk, 6, 4);
+      px(18, 17, C.zEye, 3, 2);
+      px(28, 17, C.zEye, 3, 2);
+      // pupil pinpricks
+      px(19, 18, 0x1a0a05, 1, 1);
+      px(29, 18, 0x1a0a05, 1, 1);
+
+      // Snarling mouth with teeth
+      px(16, 22, C.zEyeDk, 16, 4);
+      px(17, 23, C.zTeeth, 1, 1);
+      px(19, 23, C.zTeeth, 1, 1);
+      px(21, 23, C.zTeeth, 1, 1);
+      px(23, 23, C.zTeeth, 1, 1);
+      px(25, 23, C.zTeeth, 1, 1);
+      px(27, 23, C.zTeeth, 1, 1);
+      px(29, 23, C.zTeeth, 1, 1);
+      px(31, 23, C.zTeeth, 1, 1);
+      // bloody drool around mouth
+      px(18, 26, C.zBlood, 12, 1);
+      px(20, 27, C.zBlood, 8, 1);
+      px(22, 28, C.zBloodBR, 4, 1);
+      px(17, 26, C.zBlood, 1, 2);
+      px(30, 26, C.zBlood, 1, 2);
+
+      // Neck
+      px(20, 29, C.zSkinDk, 8, 1);
+      px(20, 30, C.zSkin, 8, 1);
+
+      // Torso (tattered shirt, greyish-blue)
+      px(11, 31, C.zShirt, 26, 20);
+      // shirt highlight/shadow
+      px(12, 32, C.zShirtHL, 1, 16);
+      px(35, 32, C.zShirtHL, 1, 16);
+      // ragged hem
+      px(11, 49, C.zShirtDk, 4, 2);
+      px(17, 49, C.zShirtDk, 4, 2);
+      px(23, 49, C.zShirtDk, 4, 2);
+      px(29, 49, C.zShirtDk, 4, 2);
+      px(35, 49, C.zShirtDk, 2, 2);
+      // big torn wound on chest
+      px(18, 36, C.zBlood,   12, 6);
+      px(20, 35, C.zBlood,    8, 1);
+      px(20, 42, C.zBloodBR,  8, 1);
+      px(22, 38, C.zBloodBR,  4, 2);
+      // small splatters
+      px(13, 33, C.zBlood, 2, 1);
+      px(14, 41, C.zBlood, 1, 1);
+      px(33, 38, C.zBlood, 2, 1);
+      px(32, 45, C.zBlood, 1, 1);
+
+      // Arms (drooped, with bloody hands)
+      px(8,  33, C.zShirt, 3, 12);
+      px(37, 33, C.zShirt, 3, 12);
+      px(8,  45, C.zSkin,  3, 5);
+      px(37, 45, C.zSkin,  3, 5);
+      // ragged sleeve edges
+      px(8,  44, C.zShirtDk, 3, 1);
+      px(37, 44, C.zShirtDk, 3, 1);
+      // bloody hands
+      px(8,  50, C.zBlood, 3, 2);
+      px(37, 50, C.zBlood, 3, 2);
+
+      // Pants (dark navy)
+      px(12, 52, C.zPants, 11, 18 - legBob);
+      px(25, 52, C.zPants, 11, 18);
+      px(13, 53, C.zPantsHL, 1, 14);
+      px(26, 53, C.zPantsHL, 1, 14);
+
+      // Boots
+      px(11, 70 - legBob, C.zBoot, 13, 8);
+      px(25, 70, C.zBoot, 13, 8);
+      px(11, 76 - legBob, C.zBootHL, 13, 2);
+      px(25, 76, C.zBootHL, 13, 2);
     }
 
     g.generateTexture(key, 48, 80);
@@ -432,11 +591,14 @@ class GameScene extends Phaser.Scene {
     const portrait = HUD(this.add.graphics()).setDepth(51);
     portrait.fillStyle(0x1a0a08, 1); portrait.fillRect(8 * u, 6 * u, 32 * u, 30 * u);
     portrait.lineStyle(1, 0xe8d4a0, 1); portrait.strokeRect(8 * u, 6 * u, 32 * u, 30 * u);
-    portrait.fillStyle(COLORS.pSkin, 1); portrait.fillRect(14 * u, 16 * u, 20 * u, 16 * u);
-    portrait.fillStyle(COLORS.pHair, 1); portrait.fillRect(14 * u, 13 * u, 20 * u, 6 * u);
-    portrait.fillStyle(0x1a0a05, 1);
-    portrait.fillRect(18 * u, 23 * u, 2 * u, 1 * u);
-    portrait.fillRect(28 * u, 23 * u, 2 * u, 1 * u);
+    portrait.fillStyle(COLORS.pSkin, 1);    portrait.fillRect(14 * u, 18 * u, 20 * u, 12 * u);
+    portrait.fillStyle(COLORS.pCap, 1);     portrait.fillRect(14 * u, 11 * u, 20 * u, 7 * u);
+    portrait.fillStyle(COLORS.pCapLogo, 1); portrait.fillRect(22 * u, 13 * u, 4 * u, 3 * u);
+    portrait.fillStyle(COLORS.pBeard, 1);   portrait.fillRect(15 * u, 24 * u, 18 * u, 5 * u);
+    portrait.fillStyle(COLORS.pGlass, 1);
+    portrait.fillRect(16 * u, 21 * u, 6 * u, 2 * u);
+    portrait.fillRect(26 * u, 21 * u, 6 * u, 2 * u);
+    portrait.fillRect(22 * u, 22 * u, 4 * u, 1 * u);
 
     HUD(this.add.text(46 * u, 5 * u, '1P', {
       fontFamily: 'Courier New, monospace',
