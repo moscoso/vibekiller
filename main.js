@@ -5,62 +5,198 @@
 // All art is generated from primitives via Phaser.Graphics.generateTexture.
 // =====================================================================
 
+// =====================================================================
+// Level data — everything is in SCREEN-RELATIVE units so layout adapts to
+// any browser size. The bg image is stretched to fill the world.
+//
+// worldScreensWide:        world width = screenW × this. 1 = no scrolling.
+// characterHeightFraction: character display height as a fraction of screenH.
+// floorTop/BottomFraction: walkable band, fractions of screenH (FEET positions).
+// playerStart.{x,y}Fraction: spawn, fractions of (worldW, screenH) — feet pos.
+// =====================================================================
+const LEVELS = [
+  {
+    id: '1-1',
+    name: 'OUT FRONT — 1-1',
+    bg: { key: 'bg_1_1', path: 'assets/bar-bg0.png' },
+    worldScreensWide: 1.8,
+    characterHeightFraction: 0.45,
+    floorTopFraction: 0.78,
+    floorBottomFraction: 0.95,
+    playerStart: { xFraction: 0.08, yFraction: 0.92 },
+    waves: [
+      { count: 2, delay: 900 },
+      { count: 3, delay: 800 }
+    ]
+  },
+  {
+    id: '1-2',
+    name: 'ON THE ROCKS — 1-2',
+    bg: { key: 'bg_1_2', path: 'assets/bar-bg.png' },
+    worldScreensWide: 1.8,
+    characterHeightFraction: 0.45,
+    floorTopFraction: 0.72,
+    floorBottomFraction: 0.94,
+    playerStart: { xFraction: 0.08, yFraction: 0.92 },
+    waves: [
+      { count: 2, delay: 900 },
+      { count: 3, delay: 800 },
+      { count: 4, delay: 700 }
+    ]
+  },
+  {
+    id: '1-3',
+    name: 'BACK ROOM — 1-3',
+    bg: { key: 'bg_1_3', path: 'assets/bar-bg2.png' },
+    worldScreensWide: 1.8,
+    characterHeightFraction: 0.45,
+    floorTopFraction: 0.72,
+    floorBottomFraction: 0.94,
+    playerStart: { xFraction: 0.08, yFraction: 0.92 },
+    waves: [
+      { count: 3, delay: 800 },
+      { count: 4, delay: 700 },
+      { count: 5, delay: 650 }
+    ]
+  }
+];
+
+// Texture height of a character sprite, used to derive characterScale.
+// Matches the standing-pose row of the player spritesheet (~74 px tall).
+// Other character bitmaps (zombies, etc.) scale relative to this.
+const CHARACTER_TEXTURE_H = 74;
+
+// Player spritesheet frame coordinates (atlas, registered in create()).
+// Source image: assets/player_spritesheet.png (600x343), 4 rows of 8 frames.
+// Frames are non-uniform — each pose has its own bbox. Each row anchors to
+// the row's bottom edge (feet line up across frames within a row).
+const PLAYER_FRAMES = {
+  // Row 1 — walk cycle
+  walk: [
+    { x: 21,  y: 8,   w: 38, h: 74 }, { x: 95,  y: 8,   w: 37, h: 74 },
+    { x: 168, y: 8,   w: 39, h: 74 }, { x: 240, y: 8,   w: 39, h: 74 },
+    { x: 309, y: 8,   w: 38, h: 74 }, { x: 385, y: 8,   w: 39, h: 74 },
+    { x: 460, y: 8,   w: 37, h: 74 }, { x: 532, y: 8,   w: 37, h: 74 }
+  ],
+  // Row 2 — run cycle
+  run: [
+    { x: 22,  y: 94,  w: 38, h: 73 }, { x: 97,  y: 94,  w: 40, h: 73 },
+    { x: 166, y: 94,  w: 43, h: 73 }, { x: 239, y: 94,  w: 52, h: 73 },
+    { x: 307, y: 94,  w: 56, h: 73 }, { x: 382, y: 94,  w: 54, h: 73 },
+    { x: 459, y: 94,  w: 41, h: 73 }, { x: 531, y: 94,  w: 38, h: 73 }
+  ],
+  // Row 3 — attack / strike poses
+  attack: [
+    { x: 20,  y: 179, w: 39, h: 74 }, { x: 92,  y: 179, w: 44, h: 74 },
+    { x: 175, y: 179, w: 42, h: 74 }, { x: 239, y: 179, w: 44, h: 74 },
+    { x: 314, y: 179, w: 40, h: 74 }, { x: 387, y: 179, w: 46, h: 74 },
+    { x: 459, y: 179, w: 37, h: 74 }, { x: 531, y: 179, w: 37, h: 74 }
+  ],
+  // Row 4 — crouch poses
+  crouch: [
+    { x: 29,  y: 268, w: 31, h: 61 }, { x: 102, y: 268, w: 32, h: 61 },
+    { x: 176, y: 268, w: 33, h: 61 }, { x: 246, y: 268, w: 32, h: 61 },
+    { x: 320, y: 268, w: 32, h: 61 }, { x: 392, y: 268, w: 33, h: 61 },
+    { x: 463, y: 268, w: 33, h: 61 }, { x: 538, y: 268, w: 33, h: 61 }
+  ]
+};
+
+// Good Vibe (post-transform happy zombie) — bright, joyful. The player and
+// "bad vibe" zombie are bitmap assets, so only the happy palette lives here.
 const COLORS = {
-  // Bar interior (palette inspired by the concept art)
-  wallDark:       0x3a1a14,
-  wallMid:        0x5c2820,
-  wallLight:      0x7a3a2a,
-  floorDark:      0x3d2817,
-  floorMid:       0x6b4226,
-  floorLight:     0x8b5a36,
-  woodTrim:       0x2d1810,
-  warmLight:      0xe8b040,
-  redLantern:     0xc8332b,
-  redLanternGlow: 0xff5040,
-  signYellow:     0xe8b040,
-  signRed:        0xa02828,
-  tvFrame:        0x0a0a0a,
-
-  // Player (dark hair, black tee, jeans — matches concept art)
-  pSkin:  0xe8b895,
-  pHair:  0x2d1810,
-  pShirt: 0x1f1f1f,
-  pJeans: 0x2b4870,
-  pBoots: 0x1a0e08,
-
-  // Bad Vibe Zombie — sad, slumped, sickly green-grey
-  zSkin:  0x7a8870,
-  zHair:  0x404038,
-  zShirt: 0x484848,
-  zPants: 0x2a2a30,
-  zEyes:  0xc8c060,
-
-  // Good Vibe (post-transform) — bright, joyful
   gSkin:  0xf0c89a,
   gShirt: 0xff5577,
-  gPants: 0x4080d0,
-  gEyes:  0x40d8ff,
-
-  text:   0xe8d4a0
+  gPants: 0x4080d0
 };
 
 class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
 
-  create() {
-    this.W = this.scale.width;
-    this.H = this.scale.height;
+  init(data) {
+    const idx = (data && typeof data.level === 'number') ? data.level : 0;
+    this.levelIndex = Phaser.Math.Clamp(idx, 0, LEVELS.length - 1);
+    this.level = LEVELS[this.levelIndex];
+    // Score carries across level transitions and restarts; reset only on first boot.
+    this.carryScore = (data && typeof data.score === 'number') ? data.score : 0;
+  }
 
-    // The "depth band" — vertical slice the player can walk in (classic beat-em-up).
-    this.floorTop = 380;
-    this.floorBottom = 520;
+  preload() {
+    this.load.image(this.level.bg.key, this.level.bg.path);
+    // Player spritesheet: 4 anim rows (walk / run / attack / crouch), 8 frames
+    // each. Frames are non-uniform — registered as named atlas regions in
+    // registerPlayerFrames() after the texture loads.
+    this.load.image('player_sheet', 'assets/player_spritesheet.png');
+    // 16-col x 4-row sheet of 96x256 cells = 64 zombie variants. Each frame
+    // has its zombie standing at the bottom of the cell, which lines up with
+    // the (0.5, 1.0) origin used at spawn.
+    this.load.spritesheet('zombies', 'assets/zombie_spritesheet.png', {
+      frameWidth: 96,
+      frameHeight: 256
+    });
+  }
+
+  registerPlayerFrames() {
+    // Add named regions to the player_sheet texture so we can play sprite
+    // animations like walk_0..7, run_0..7, attack_0..7, crouch_0..7.
+    const tex = this.textures.get('player_sheet');
+    for (const animKey of Object.keys(PLAYER_FRAMES)) {
+      PLAYER_FRAMES[animKey].forEach((f, i) => {
+        const name = `${animKey}_${i}`;
+        if (!tex.has(name)) tex.add(name, 0, f.x, f.y, f.w, f.h);
+      });
+    }
+    const mkAnim = (key, prefix, frameRate, repeat) => {
+      if (this.anims.exists(key)) return;
+      const frames = PLAYER_FRAMES[prefix].map((_, i) => ({ key: 'player_sheet', frame: `${prefix}_${i}` }));
+      this.anims.create({ key, frames, frameRate, repeat });
+    };
+    mkAnim('p_walk',   'walk',   10, -1);
+    mkAnim('p_run',    'run',    14, -1);
+    mkAnim('p_attack', 'attack', 18,  0);
+    mkAnim('p_crouch', 'crouch',  8, -1);
+  }
+
+  create() {
+    // ----- Derive everything from current screen size -----
+    this.screenW = this.scale.width;
+    this.screenH = this.scale.height;
+
+    // World = playable arena. World height matches screen (no vertical scroll).
+    // World width = N screens wide.
+    this.worldW = this.screenW * this.level.worldScreensWide;
+    this.worldH = this.screenH;
+
+    // Character scale derived from texture height + target screen fraction
+    this.characterScale = (this.screenH * this.level.characterHeightFraction) / CHARACTER_TEXTURE_H;
+    this.spriteH = CHARACTER_TEXTURE_H * this.characterScale;
+
+    // Floor band = where character feet (sprite y, since origin is 1.0) can stand
+    this.floorTop    = this.screenH * this.level.floorTopFraction;
+    this.floorBottom = this.screenH * this.level.floorBottomFraction;
+
+    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
+
+    // Two layers — main camera renders worldLayer, UI camera renders uiLayer.
+    // Anything spawned dynamically (bursts, floaters) must be added to worldLayer
+    // via this.worldAdd() so it renders with the world camera.
+    this.worldLayer = this.add.layer();
+    this.uiLayer    = this.add.layer();
+    this.worldAdd   = (obj) => { this.worldLayer.add(obj); return obj; };
 
     this.createTextures();
+    this.registerPlayerFrames();
     this.buildBackground();
 
     // ----- Player -----
-    this.player = this.physics.add.sprite(140, 470, 'player_idle');
-    this.player.body.setSize(36, 30).setOffset(6, 50);
+    const startX = this.worldW  * this.level.playerStart.xFraction;
+    const startY = this.screenH * this.level.playerStart.yFraction;
+    this.player = this.physics.add.sprite(startX, startY, 'player_sheet', 'walk_0');
+    this.player.setOrigin(0.5, 1.0);          // y = feet position
+    this.player.setScale(this.characterScale);
+    // Body covers the lower 30 of the ~74-tall walk frames. Phaser scales
+    // body dimensions with sprite.scale, so these are in TEXTURE units.
+    // Body x is centered on the most common ~38-wide walk frame.
+    this.player.body.setSize(22, 30).setOffset(8, 44);
     this.player.mood = 100;
     this.player.maxMood = 100;
     this.player.attacking = false;
@@ -69,12 +205,20 @@ class GameScene extends Phaser.Scene {
     this.player.invuln = 0;
     this.player.facing = 1;
     this.player.walkPhase = 0;
+    this.player.crouching = false;
+    this.player.running = false;
+    this.worldAdd(this.player);
 
-    // Attack hitbox — invisible rect, enabled only during the attack window
-    this.attackBox = this.add.rectangle(0, 0, 60, 38, 0xffe066, 0);
+    // Attack hitbox — invisible rect, enabled only during the attack window.
+    // Sized in world units (already scaled). Reach is in TEXTURE units of
+    // the player sprite (~38x74 walk frame), then scaled to world.
+    const reachW = 56 * this.characterScale;
+    const reachH = 36 * this.characterScale;
+    this.attackBox = this.add.rectangle(0, 0, reachW, reachH, 0xffe066, 0);
     this.physics.add.existing(this.attackBox);
     this.attackBox.body.setAllowGravity(false);
     this.attackBox.body.enable = false;
+    this.worldAdd(this.attackBox);
 
     // Tracks enemies hit by the *current* swing (so one swing = one hit per enemy)
     this.currentAttackHits = new Set();
@@ -82,12 +226,13 @@ class GameScene extends Phaser.Scene {
     // "HIGH FIVE!" text that pops up when the player attacks
     this.attackText = this.add.text(0, 0, 'HIGH FIVE!', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '14px',
+      fontSize: `${Math.round(14 * this.characterScale * 0.5)}px`,
       color: '#ffe066',
       stroke: '#1a0a0a',
       strokeThickness: 4,
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(900).setVisible(false);
+    this.worldAdd(this.attackText);
 
     // ----- Enemies -----
     this.enemies = this.physics.add.group();
@@ -95,13 +240,9 @@ class GameScene extends Phaser.Scene {
     this.enemiesToSpawn = 0;
 
     // ----- Game state -----
-    this.score = 0;
+    this.score = this.carryScore;
     this.waveIndex = 0;
-    this.waves = [
-      { count: 2, delay: 900 },
-      { count: 3, delay: 800 },
-      { count: 4, delay: 700 }
-    ];
+    this.waves = this.level.waves;
     this.gameState = 'playing'; // 'playing' | 'gameover' | 'cleared'
 
     // ----- Input -----
@@ -109,15 +250,43 @@ class GameScene extends Phaser.Scene {
     this.keysWASD = this.input.keyboard.addKeys('W,A,S,D');
     this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.keyR     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+    this.keyShift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+    this.keyC     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
 
     // ----- Collisions -----
     this.physics.add.overlap(this.player, this.enemies, this.handleContact, null, this);
     this.physics.add.overlap(this.attackBox, this.enemies, this.handleHit, null, this);
 
+    // ----- Cameras -----
+    // World cam: 1:1 with screen (no zoom — world is already in screen units).
+    const cam = this.cameras.main;
+    cam.setBounds(0, 0, this.worldW, this.worldH);
+    cam.startFollow(this.player, true, 0.12, 0);
+    cam.ignore(this.uiLayer);
+
+    // UI cam: 1:1 with screen, no scroll.
+    this.uiCam = this.cameras.add(0, 0, this.screenW, this.screenH);
+    this.uiCam.ignore(this.worldLayer);
+
     this.createHUD();
+
+    // Resize → restart scene with the new dimensions. Simplest reliable path
+    // since worldW/H, character scale, floor band, and BG stretch all depend
+    // on screen size; in-place re-layout would be a lot of bookkeeping.
+    this.scale.on('resize', this.handleResize, this);
 
     // First wave starts shortly after scene load
     this.time.delayedCall(700, () => this.spawnNextWave());
+  }
+
+  handleResize() {
+    if (this.scale.width === 0 || this.scale.height === 0) return;
+    // Debounce window-drag spam: only restart 200ms after the last resize event.
+    if (this._resizeTimer) this._resizeTimer.remove(false);
+    this._resizeTimer = this.time.delayedCall(200, () => {
+      this._resizeTimer = null;
+      this.scene.restart({ level: this.levelIndex, score: this.score });
+    });
   }
 
   // =====================================================================
@@ -126,80 +295,24 @@ class GameScene extends Phaser.Scene {
   // =====================================================================
 
   createTextures() {
-    this.makePlayerTexture('player_idle',   0);
-    this.makePlayerTexture('player_walk',   1);
-    this.makePlayerTexture('player_attack', 2);
-    this.makeEnemyTexture('zombie_walk1',   'sad',   0);
-    this.makeEnemyTexture('zombie_walk2',   'sad',   1);
-    this.makeEnemyTexture('zombie_happy',   'happy', 0);
+    // Player ('friend') and bad-vibe zombie variants ('zombies' spritesheet)
+    // are bitmap assets loaded in preload(). Only the post-transform happy
+    // zombie and the hit burst still use procedural textures.
+    this.makeEnemyTexture('zombie_happy', 'happy', 0);
     this.makeBurstTexture();
   }
 
-  makePlayerTexture(key, frame) {
-    // 48 wide, 80 tall. Origin (0,0) at top-left.
-    // frame: 0=idle, 1=walk (slight bob), 2=attack (right arm extended)
-    const g = this.add.graphics();
-    const C = COLORS;
-    const px = (x, y, c, w = 1, h = 1) => { g.fillStyle(c, 1); g.fillRect(x, y, w, h); };
-
-    const legBob = frame === 1 ? 1 : 0;
-
-    // Legs (jeans + boots)
-    px(18, 60, C.pJeans, 5, 16 - legBob);
-    px(25, 60, C.pJeans, 5, 16);
-    px(18, 76 - legBob, C.pBoots, 5, 4);
-    px(25, 76, C.pBoots, 5, 4);
-
-    // Belt + torso (black tee)
-    px(15, 38, C.pShirt, 18, 22);
-    px(15, 58, 0x1a0a05, 18, 2);
-
-    // Arms
-    if (frame === 2) {
-      // Attack pose — left arm tucked, right arm reaching out for the high-five
-      px(13, 40, C.pShirt, 4, 14);
-      px(13, 54, C.pSkin, 4, 4);
-      px(33, 36, C.pShirt, 4, 6);
-      px(37, 34, C.pSkin, 6, 8);
-      px(43, 30, C.pSkin, 4, 12); // hand
-      // Spark on the palm
-      px(45, 28, 0xffe066, 2, 2);
-    } else {
-      const armBob = frame === 1 ? -1 : 0;
-      px(11, 40 + armBob, C.pShirt, 4, 14);
-      px(11, 54 + armBob, C.pSkin, 4, 4);
-      px(33, 40 - armBob, C.pShirt, 4, 14);
-      px(33, 54 - armBob, C.pSkin, 4, 4);
-    }
-
-    // Neck + head + hair
-    px(21, 34, C.pSkin, 6, 4);
-    px(17, 18, C.pSkin, 14, 16);
-    px(15, 14, C.pHair, 18, 8);
-    px(13, 18, C.pHair, 4, 6);
-    px(31, 18, C.pHair, 4, 6);
-    // Eyes + mouth
-    px(20, 24, 0x1a0a05, 2, 2);
-    px(26, 24, 0x1a0a05, 2, 2);
-    px(22, 30, 0x6a3020, 4, 1);
-
-    g.generateTexture(key, 48, 80);
-    g.destroy();
-  }
-
   makeEnemyTexture(key, mood, frame) {
+    // Only the post-transform "happy" zombie still uses procedural art.
     const g = this.add.graphics();
     const C = COLORS;
-    const isHappy = mood === 'happy';
-    const skin  = isHappy ? C.gSkin  : C.zSkin;
-    const shirt = isHappy ? C.gShirt : C.zShirt;
-    const pants = isHappy ? C.gPants : C.zPants;
-    const eye   = isHappy ? C.gEyes  : C.zEyes;
-    const hair  = isHappy ? 0x6a3020 : C.zHair;
     const px = (x, y, c, w = 1, h = 1) => { g.fillStyle(c, 1); g.fillRect(x, y, w, h); };
 
     const legBob = frame === 1 ? 1 : 0;
-    const slump  = isHappy ? 0 : 2; // sad zombies slump forward
+    const skin  = C.gSkin;
+    const shirt = C.gShirt;
+    const pants = C.gPants;
+    const hair  = 0x6a3020;
 
     // Legs
     px(18, 60, pants, 5, 16 - legBob);
@@ -208,57 +321,31 @@ class GameScene extends Phaser.Scene {
     px(25, 76, 0x1a0a05, 5, 4);
 
     // Torso
-    px(15, 38 + slump, shirt, 18, 22 - slump);
+    px(15, 38, shirt, 18, 22);
 
-    // Arms
-    if (isHappy) {
-      // Slightly raised, alive
-      px(11, 38, shirt, 4, 12);
-      px(11, 50, skin, 4, 4);
-      px(33, 38, shirt, 4, 12);
-      px(33, 50, skin, 4, 4);
-    } else {
-      // Drooped
-      px(11, 42, shirt, 4, 14);
-      px(11, 56, skin, 4, 4);
-      px(33, 42, shirt, 4, 14);
-      px(33, 56, skin, 4, 4);
-    }
+    // Arms (raised, alive)
+    px(11, 38, shirt, 4, 12);
+    px(11, 50, skin, 4, 4);
+    px(33, 38, shirt, 4, 12);
+    px(33, 50, skin, 4, 4);
 
-    // Neck + head
-    px(21, 34 + slump, skin, 6, 4);
-    px(17, 18 + slump, skin, 14, 16);
-    // Messy hair
-    px(15, 14 + slump, hair, 18, 8);
-    px(13, 18 + slump, hair, 3, 8);
-    px(32, 18 + slump, hair, 3, 8);
+    // Neck + head + hair
+    px(21, 34, skin, 6, 4);
+    px(17, 18, skin, 14, 16);
+    px(15, 14, hair, 18, 8);
+    px(13, 18, hair, 3, 8);
+    px(32, 18, hair, 3, 8);
 
-    if (isHappy) {
-      // Closed-eye smile, blush, big grin
-      px(19, 24, 0x1a0a05, 4, 1);
-      px(25, 24, 0x1a0a05, 4, 1);
-      px(18, 25, 0x1a0a05, 1, 1);
-      px(28, 25, 0x1a0a05, 1, 1);
-      px(17, 27, 0xff8090, 3, 2);
-      px(28, 27, 0xff8090, 3, 2);
-      px(20, 30, 0x4a1010, 8, 1);
-      px(19, 31, 0x4a1010, 1, 1);
-      px(28, 31, 0x4a1010, 1, 1);
-    } else {
-      // Sunken zombie eyes, frown, stink lines
-      px(19, 23 + slump, 0x2a2a2a, 4, 3);
-      px(25, 23 + slump, 0x2a2a2a, 4, 3);
-      px(20, 24 + slump, eye, 2, 1);
-      px(26, 24 + slump, eye, 2, 1);
-      px(20, 31 + slump, 0x2a1a10, 8, 1);
-      px(19, 30 + slump, 0x2a1a10, 1, 1);
-      px(28, 30 + slump, 0x2a1a10, 1, 1);
-      // Stink wisps drifting up from the head
-      px(14, 14 + slump, 0x6a8a60, 1, 4);
-      px(33, 14 + slump, 0x6a8a60, 1, 4);
-      px(13, 12 + slump, 0x6a8a60, 1, 2);
-      px(34, 12 + slump, 0x6a8a60, 1, 2);
-    }
+    // Closed-eye smile, blush, grin
+    px(19, 24, 0x1a0a05, 4, 1);
+    px(25, 24, 0x1a0a05, 4, 1);
+    px(18, 25, 0x1a0a05, 1, 1);
+    px(28, 25, 0x1a0a05, 1, 1);
+    px(17, 27, 0xff8090, 3, 2);
+    px(28, 27, 0xff8090, 3, 2);
+    px(20, 30, 0x4a1010, 8, 1);
+    px(19, 31, 0x4a1010, 1, 1);
+    px(28, 31, 0x4a1010, 1, 1);
 
     g.generateTexture(key, 48, 80);
     g.destroy();
@@ -285,175 +372,17 @@ class GameScene extends Phaser.Scene {
   }
 
   // =====================================================================
-  // Background — drawn once into a static Graphics object.
+  // Background — single bitmap from the level config, anchored top-left.
   // =====================================================================
 
   buildBackground() {
-    const W = this.W, H = this.H, C = COLORS;
-    const g = this.add.graphics();
-
-    // Wall layers (light/mid/dark for depth)
-    g.fillStyle(C.wallDark, 1);
-    g.fillRect(0, 0, W, 380);
-    g.fillStyle(C.wallMid, 1);
-    g.fillRect(0, 60, W, 280);
-
-    // Wood trim where the wall meets the floor
-    g.fillStyle(C.woodTrim, 1);
-    g.fillRect(0, 340, W, 12);
-    g.fillStyle(C.floorMid, 1);
-    g.fillRect(0, 352, W, 6);
-    g.fillStyle(C.woodTrim, 1);
-    g.fillRect(0, 358, W, 4);
-
-    // Floor — wide planks with subtle plank seams
-    g.fillStyle(C.floorMid, 1);
-    g.fillRect(0, 362, W, H - 362);
-    g.fillStyle(C.floorDark, 1);
-    for (let x = 0; x < W; x += 80) g.fillRect(x, 362, 1, H - 362);
-    g.fillStyle(C.floorLight, 1);
-    for (let y = 380; y < H; y += 28) g.fillRect(0, y, W, 1);
-
-    // Ceiling band
-    g.fillStyle(0x1a0a08, 1);
-    g.fillRect(0, 0, W, 30);
-    g.fillStyle(0x3a2018, 1);
-    g.fillRect(0, 28, W, 4);
-
-    // Wall TVs (sports / shows)
-    this.drawTV(g,  80,  72, 110, 70, 0x404060);
-    this.drawTV(g, 240,  98, 130, 80, 0x508050);
-    this.drawTV(g, 410,  60, 140, 90, 0x806040);
-    this.drawTV(g, 590,  82, 130, 80, 0x404080);
-    this.drawTV(g, 770, 100, 130, 70, 0x804040);
-
-    // EXIT sign
-    g.fillStyle(0x2a0a0a, 1);  g.fillRect(540, 180, 60, 26);
-    g.fillStyle(0xff3030, 1);  g.fillRect(544, 184, 52, 18);
-    // Glow tint
-    g.fillStyle(0xff6060, 0.4); g.fillRect(540, 200, 60, 8);
-
-    // Beer brand discs
-    this.drawDiscSign(g, 200, 220, 24, 0xc8a050, 0x806020);
-    this.drawDiscSign(g, 260, 230, 22, 0xc83030, 0x801020);
-    this.drawDiscSign(g, 320, 220, 26, 0xe0d040, 0x806010);
-    this.drawDiscSign(g, 660, 220, 24, 0x303030, 0xc0c0c0);
-    this.drawDiscSign(g, 720, 230, 22, 0x80c060, 0x408030);
-
-    // Square poster signs
-    g.fillStyle(0x806020, 1); g.fillRect(370, 200, 50, 60);
-    g.fillStyle(0xe8b040, 1); g.fillRect(375, 205, 40, 50);
-    g.fillStyle(0x402810, 1); g.fillRect(440, 220, 40, 30);
-    g.fillStyle(0xc8a060, 1); g.fillRect(443, 223, 34, 24);
-
-    // Red pendant lanterns
-    this.drawLantern(g, 110, 56);
-    this.drawLantern(g, 380, 38);
-    this.drawLantern(g, 580, 38);
-    this.drawLantern(g, 850, 56);
-
-    // Warm hanging lamp
-    g.fillStyle(0x202020, 1);
-    g.fillRect(155, 30, 2, 90);
-    g.fillStyle(C.warmLight, 0.9);
-    g.fillTriangle(135, 120, 175, 120, 155, 90);
-    g.fillStyle(0xfff0c0, 0.5);
-    g.fillCircle(155, 130, 24);
-
-    // Window with city skyline (left)
-    g.fillStyle(0x102030, 1); g.fillRect(0, 200, 80, 140);
-    g.fillStyle(0x403828, 1);
-    g.fillRect(0, 198, 82, 4);
-    g.fillRect(78, 200, 4, 142);
-    g.fillRect(0, 268, 80, 2);
-    g.fillStyle(0x080814, 1);
-    g.fillRect(0,  280, 22, 60);
-    g.fillRect(22, 270, 16, 70);
-    g.fillRect(38, 286, 14, 54);
-    g.fillRect(52, 274, 12, 66);
-    g.fillRect(64, 282, 16, 58);
-    g.fillStyle(0xe0c060, 0.85);
-    [4, 10, 16, 26, 32, 44, 56, 68].forEach((x, i) => {
-      g.fillRect(x, 290 + (i % 3) * 6, 2, 2);
-    });
-
-    // Bar furniture in the foreground (decorative, doesn't block movement)
-    this.drawBarrel(g, 90, 470);
-    this.drawTable(g, 130, 460, 70);
-    this.drawStool(g, 50, 500);
-    this.drawStool(g, 220, 510);
-    this.drawTable(g, 800, 470, 130);
-    this.drawStool(g, 880, 510);
-    // Pint glass on the right table
-    g.fillStyle(0xfff0c0, 1);  g.fillRect(840, 458, 8, 12);
-    g.fillStyle(0xe8b040, 1);  g.fillRect(840, 460, 8, 8);
-    g.fillStyle(0xfff0c0, 0.6); g.fillRect(840, 458, 8, 3); // foam
-
-    g.setDepth(0);
-
-    // Soft warm light pools on the floor (additive feel via low alpha)
-    const pools = this.add.graphics().setDepth(1);
-    pools.fillStyle(0xe8b040, 0.08); pools.fillCircle(155, 460, 90);
-    pools.fillStyle(0xc8332b, 0.06);
-    pools.fillCircle(380, 460, 70);
-    pools.fillCircle(580, 460, 70);
-    pools.fillCircle(850, 460, 70);
-  }
-
-  drawTV(g, x, y, w, h, screenColor) {
-    g.fillStyle(0x0a0a0a, 1); g.fillRect(x - 4, y - 4, w + 8, h + 8);
-    g.fillStyle(0x1a1a1a, 1); g.fillRect(x, y, w, h);
-    g.fillStyle(screenColor, 1); g.fillRect(x + 4, y + 4, w - 8, h - 8);
-    g.fillStyle(0x000000, 0.3);
-    for (let i = 0; i < h - 8; i += 4) g.fillRect(x + 4, y + 4 + i, w - 8, 1);
-    // Suggestion of figures / sports content on screen
-    g.fillStyle(0xffffff, 0.6); g.fillRect(x + 10, y + 10, 8, 4);
-    g.fillStyle(0xffffff, 0.7); g.fillRect(x + 24, y + 14, 12, 6);
-    g.fillStyle(0xff4040, 0.75); g.fillRect(x + 40, y + 20, 6, 6);
-    g.fillStyle(0x4080ff, 0.6); g.fillRect(x + w - 22, y + 16, 10, 6);
-  }
-
-  drawDiscSign(g, x, y, r, fill, ring) {
-    g.fillStyle(ring, 1); g.fillCircle(x, y, r);
-    g.fillStyle(fill, 1); g.fillCircle(x, y, r - 3);
-    g.fillStyle(ring, 1); g.fillRect(x - r + 4, y - 2, r * 2 - 8, 4);
-  }
-
-  drawLantern(g, x, y) {
-    g.fillStyle(0x1a1a1a, 1); g.fillRect(x, 0, 2, y - 14);
-    g.fillStyle(0xff5040, 0.25); g.fillCircle(x, y, 24);
-    g.fillStyle(0xff5040, 0.45); g.fillCircle(x, y, 16);
-    g.fillStyle(0xc8332b, 1);    g.fillCircle(x, y, 12);
-    g.fillStyle(0xff8060, 1);    g.fillCircle(x - 3, y - 3, 4);
-    g.fillStyle(0x1a1a1a, 1);
-    g.fillRect(x - 4, y - 14, 8, 3);
-    g.fillRect(x - 6, y + 11, 12, 3);
-  }
-
-  drawBarrel(g, x, y) {
-    g.fillStyle(0x402810, 1); g.fillRect(x - 22, y - 50, 44, 50);
-    g.fillStyle(0x6b4226, 1); g.fillRect(x - 20, y - 48, 40, 46);
-    g.fillStyle(0x2a1a08, 1);
-    g.fillRect(x - 22, y - 44, 44, 3);
-    g.fillRect(x - 22, y - 24, 44, 3);
-    g.fillRect(x - 22, y - 6, 44, 3);
-    g.fillStyle(0x402810, 0.4);
-    for (let i = -16; i <= 16; i += 8) g.fillRect(x + i, y - 48, 1, 46);
-  }
-
-  drawTable(g, x, y, w) {
-    g.fillStyle(0x2a1a08, 1); g.fillRect(x - w / 2, y - 14, w, 14);
-    g.fillStyle(0x6b4226, 1); g.fillRect(x - w / 2, y - 14, w, 4);
-    g.fillStyle(0x8b5a36, 1); g.fillRect(x - w / 2 + 2, y - 13, w - 4, 1);
-  }
-
-  drawStool(g, x, y) {
-    g.fillStyle(0x402810, 1); g.fillCircle(x, y - 30, 11);
-    g.fillStyle(0x6b4226, 1); g.fillCircle(x, y - 31, 9);
-    g.fillStyle(0x2a1a08, 1);
-    g.fillRect(x - 8, y - 30, 2, 30);
-    g.fillRect(x + 6, y - 30, 2, 30);
-    g.fillRect(x - 1, y - 30, 2, 30);
+    // Stretch bg image to fill the world dimensions
+    this.worldAdd(
+      this.add.image(0, 0, this.level.bg.key)
+        .setOrigin(0, 0)
+        .setDisplaySize(this.worldW, this.worldH)
+        .setDepth(0)
+    );
   }
 
   // =====================================================================
@@ -461,82 +390,94 @@ class GameScene extends Phaser.Scene {
   // =====================================================================
 
   createHUD() {
+    // HUD is rendered by the UI camera, so positions are in screen pixels.
+    // W/H are read fresh each rebuild so the layout adapts to window size.
+    this.W = this.scale.width;
+    this.H = this.scale.height;
+    // Scale HUD with screen height so it stays readable on big monitors.
+    const u = this.uiScale = Math.max(1, this.H / 540);
+    this._hudU = u;
+    const fs = (px) => `${Math.round(px * u)}px`;
+
+    const HUD = (obj) => { this.uiLayer.add(obj); return obj; };
+
     // Top strip
-    const strip = this.add.graphics().setDepth(50);
+    const strip = HUD(this.add.graphics()).setDepth(50);
     strip.fillStyle(0x000000, 0.45);
-    strip.fillRect(0, 0, this.W, 40);
+    strip.fillRect(0, 0, this.W, 40 * u);
 
-    // Player portrait box (matches concept-art top-left widget)
-    const portrait = this.add.graphics().setDepth(51);
-    portrait.fillStyle(0x1a0a08, 1); portrait.fillRect(8, 6, 32, 30);
-    portrait.lineStyle(1, 0xe8d4a0, 1); portrait.strokeRect(8, 6, 32, 30);
-    portrait.fillStyle(COLORS.pSkin, 1); portrait.fillRect(14, 16, 20, 16);
-    portrait.fillStyle(COLORS.pHair, 1); portrait.fillRect(14, 13, 20, 6);
-    portrait.fillStyle(0x1a0a05, 1);
-    portrait.fillRect(18, 23, 2, 1);
-    portrait.fillRect(28, 23, 2, 1);
+    // Player portrait box — uses the first walk frame from the player sheet.
+    const portrait = HUD(this.add.graphics()).setDepth(51);
+    portrait.fillStyle(0x1a0a08, 1);    portrait.fillRect(8 * u, 6 * u, 32 * u, 30 * u);
+    portrait.lineStyle(1, 0xe8d4a0, 1); portrait.strokeRect(8 * u, 6 * u, 32 * u, 30 * u);
+    const portImg = HUD(this.add.image(24 * u, 21 * u, 'player_sheet', 'walk_0')).setDepth(52);
+    portImg.setOrigin(0.5);
+    // Walk frame is ~38x74; fit it inside the ~28x28 inner box by height.
+    portImg.setScale((28 * u) / 74);
 
-    this.add.text(46, 5, '1P', {
+    HUD(this.add.text(46 * u, 5 * u, '1P', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '12px', color: '#e83838', fontStyle: 'bold'
-    }).setDepth(52);
-    this.add.text(46, 19, 'MOOD', {
+      fontSize: fs(12), color: '#e83838', fontStyle: 'bold'
+    })).setDepth(52);
+    HUD(this.add.text(46 * u, 19 * u, 'MOOD', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '9px', color: '#e8d4a0'
-    }).setDepth(52);
+      fontSize: fs(9), color: '#e8d4a0'
+    })).setDepth(52);
 
     // Mood bar
-    const frame = this.add.graphics().setDepth(52);
+    const frame = HUD(this.add.graphics()).setDepth(52);
     frame.lineStyle(1, 0xe8d4a0, 1);
-    frame.strokeRect(85, 19, 160, 10);
-    this.moodBar = this.add.graphics().setDepth(52);
+    frame.strokeRect(85 * u, 19 * u, 160 * u, 10 * u);
+    this.moodBar = HUD(this.add.graphics()).setDepth(52);
 
     // Score (top center)
-    this.add.text(this.W / 2, 5, 'SCORE', {
+    HUD(this.add.text(this.W / 2, 5 * u, 'SCORE', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '10px', color: '#e8b040', fontStyle: 'bold'
-    }).setOrigin(0.5, 0).setDepth(52);
-    this.scoreText = this.add.text(this.W / 2, 17, '0000000', {
+      fontSize: fs(10), color: '#e8b040', fontStyle: 'bold'
+    })).setOrigin(0.5, 0).setDepth(52);
+    this.scoreText = HUD(this.add.text(this.W / 2, 17 * u, '0000000', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '14px', color: '#ffe066', fontStyle: 'bold'
-    }).setOrigin(0.5, 0).setDepth(52);
+      fontSize: fs(14), color: '#ffe066', fontStyle: 'bold'
+    })).setOrigin(0.5, 0).setDepth(52);
 
     // Wave (top right)
-    this.waveText = this.add.text(this.W - 12, 8, 'WAVE -/-', {
+    this.waveText = HUD(this.add.text(this.W - 12 * u, 8 * u, 'WAVE -/-', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '12px', color: '#e8d4a0', fontStyle: 'bold'
-    }).setOrigin(1, 0).setDepth(52);
+      fontSize: fs(12), color: '#e8d4a0', fontStyle: 'bold'
+    })).setOrigin(1, 0).setDepth(52);
+    if (this.waveIndex > 0) this.waveText.setText(`WAVE ${this.waveIndex}/${this.waves.length}`);
 
     // Level label (bottom)
-    this.add.text(this.W / 2, this.H - 16, 'ON THE ROCKS — 1-1', {
+    HUD(this.add.text(this.W / 2, this.H - 18 * u, this.level.name, {
       fontFamily: 'Courier New, monospace',
-      fontSize: '11px', color: '#e8d4a0'
-    }).setOrigin(0.5, 0).setDepth(52);
+      fontSize: fs(12), color: '#e8d4a0'
+    })).setOrigin(0.5, 0).setDepth(52);
 
     // Center message (used for wave intro / game over / clear)
-    this.centerMsg = this.add.text(this.W / 2, this.H / 2 - 30, '', {
+    this.centerMsg = HUD(this.add.text(this.W / 2, this.H / 2 - 30 * u, '', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '34px', color: '#ffe066',
+      fontSize: fs(34), color: '#ffe066',
       stroke: '#1a0a0a', strokeThickness: 6, fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(60).setVisible(false);
-    this.subMsg = this.add.text(this.W / 2, this.H / 2 + 12, '', {
+    })).setOrigin(0.5).setDepth(60).setVisible(false);
+    this.subMsg = HUD(this.add.text(this.W / 2, this.H / 2 + 12 * u, '', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '14px', color: '#e8d4a0',
+      fontSize: fs(14), color: '#e8d4a0',
       stroke: '#1a0a0a', strokeThickness: 4
-    }).setOrigin(0.5).setDepth(60).setVisible(false);
+    })).setOrigin(0.5).setDepth(60).setVisible(false);
 
     this.updateMoodBar();
     this.updateScore();
   }
 
   updateMoodBar() {
+    const u = this._hudU || 1;
     const ratio = Phaser.Math.Clamp(this.player.mood / this.player.maxMood, 0, 1);
     this.moodBar.clear();
     this.moodBar.fillStyle(0x303030, 1);
-    this.moodBar.fillRect(86, 20, 158, 8);
+    this.moodBar.fillRect(86 * u, 20 * u, 158 * u, 8 * u);
     const color = ratio < 0.3 ? 0xa01010 : (ratio < 0.6 ? 0xe87038 : 0xe83838);
     this.moodBar.fillStyle(color, 1);
-    this.moodBar.fillRect(86, 20, 158 * ratio, 8);
+    this.moodBar.fillRect(86 * u, 20 * u, 158 * u * ratio, 8 * u);
   }
 
   updateScore() {
@@ -580,18 +521,27 @@ class GameScene extends Phaser.Scene {
     if (this.gameState !== 'playing') return;
     this.enemiesToSpawn = Math.max(0, this.enemiesToSpawn - 1);
 
-    const fromLeft = Math.random() < 0.3;
-    const x = fromLeft ? -40 : this.W + 40;
+    // Spawn just off the visible world rectangle (cam.worldView accounts for zoom)
+    const view = this.cameras.main.worldView;
+    const fromLeft = Math.random() < 0.5;
+    const x = fromLeft ? view.x - 40 : view.right + 40;
     const y = Phaser.Math.Between(this.floorTop + 20, this.floorBottom - 10);
-    const e = this.physics.add.sprite(x, y, 'zombie_walk1');
-    e.body.setSize(36, 30).setOffset(6, 50);
+    // Pick a random zombie variant from the 64-frame spritesheet.
+    const frame = Phaser.Math.Between(0, 63);
+    const e = this.physics.add.sprite(x, y, 'zombies', frame);
+    e.zombieFrame = frame;                    // remembered so we don't re-roll
+    e.setOrigin(0.5, 1.0);                    // y = feet position (matches player)
+    e.setScale(this.characterScale);
+    // Body: legs/feet area of the 96x256 zombie cell.
+    e.body.setSize(60, 90).setOffset(18, 165);
     e.state = 'attacking';                       // 'attacking' | 'transformed'
-    e.speed = Phaser.Math.Between(40, 65);
-    e.hp = 2;
+    e.speed = Phaser.Math.Between(28, 42) * this.characterScale;
+    e.hp = 1;
     e.hitFlash = 0;
     e.attackCooldown = 0;
     e.walkPhase = Math.random() * 1000;
     this.enemies.add(e);
+    this.worldAdd(e);
     this.activeEnemies++;
   }
 
@@ -606,7 +556,7 @@ class GameScene extends Phaser.Scene {
       this.updateEnemies(dt);
       this.updateMoodBar();
     }
-    if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart();
+    if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart({ level: this.levelIndex, score: this.score });
   }
 
   handleMovement(dt) {
@@ -623,8 +573,18 @@ class GameScene extends Phaser.Scene {
       }
     }
 
+    // Movement modifiers — Shift = run (faster), C = crouch (much slower)
+    const wantCrouch = this.keyC.isDown && !p.attacking;
+    const wantRun    = this.keyShift.isDown && !wantCrouch && !p.attacking;
+    p.crouching = wantCrouch;
+    p.running   = wantRun;
+
+    const walkSpeed   =  90 * this.characterScale;
+    const runSpeed    = 160 * this.characterScale;
+    const crouchSpeed =  35 * this.characterScale;
+    const speed = wantCrouch ? crouchSpeed : (wantRun ? runSpeed : walkSpeed);
+
     let vx = 0, vy = 0;
-    const speed = 180;
     if (!p.attacking) {
       if (this.cursors.left.isDown  || this.keysWASD.A.isDown) vx = -speed;
       else if (this.cursors.right.isDown || this.keysWASD.D.isDown) vx =  speed;
@@ -636,25 +596,28 @@ class GameScene extends Phaser.Scene {
     // Constrain to floor depth band + horizontal bounds
     if (p.y < this.floorTop)     p.y = this.floorTop;
     if (p.y > this.floorBottom)  p.y = this.floorBottom;
-    if (p.x < 30)                p.x = 30;
-    if (p.x > this.W - 30)       p.x = this.W - 30;
+    const margin = 24 * this.characterScale; // half sprite-width
+    if (p.x < margin)               p.x = margin;
+    if (p.x > this.worldW - margin) p.x = this.worldW - margin;
 
     // Pseudo-3D: deeper rows render below closer rows
     p.setDepth(p.y);
 
-    // Facing
+    // Facing — only flip on horizontal input so vertical-only movement keeps the last facing
     if (vx > 0) p.facing = 1;
     else if (vx < 0) p.facing = -1;
     p.setFlipX(p.facing < 0);
 
-    // Walk-cycle (idle ↔ walk frames)
+    // Animation selection (attack anim is started in handleAttack)
     if (!p.attacking) {
-      if (vx !== 0 || vy !== 0) {
-        p.walkPhase += dt;
-        const f = Math.floor(p.walkPhase / 120) % 2;
-        p.setTexture(f === 0 ? 'player_idle' : 'player_walk');
+      if (wantCrouch) {
+        p.anims.play('p_crouch', true);
+      } else if (vx !== 0 || vy !== 0) {
+        p.anims.play(wantRun ? 'p_run' : 'p_walk', true);
       } else {
-        p.setTexture('player_idle');
+        // Idle — first walk frame, animation paused
+        p.anims.stop();
+        p.setFrame('walk_0');
       }
     }
 
@@ -667,35 +630,39 @@ class GameScene extends Phaser.Scene {
 
     if (Phaser.Input.Keyboard.JustDown(this.keySpace) && p.cooldown <= 0 && !p.attacking) {
       p.attacking = true;
-      p.attackTimer = 220;
-      p.cooldown = 320;
-      p.setTexture('player_attack');
+      // Attack anim is 8 frames at 18fps = ~444ms; keep gameplay window slightly
+      // shorter so the swing feels snappy.
+      p.attackTimer = 360;
+      p.cooldown = 420;
+      p.anims.play('p_attack', true);
       this.currentAttackHits.clear();
 
-      // Position the hitbox in front of the player
-      const offX = p.facing * 30;
+      // Position the hitbox at the player's hand height (~midbody, slightly above center).
+      // With origin (0.5, 1.0): sprite center = p.y - spriteH/2, "hand" ≈ p.y - spriteH * 0.55
+      const offX = p.facing * 80 * this.characterScale;
+      const handY = p.y - this.spriteH * 0.55;
       this.attackBox.x = p.x + offX;
-      this.attackBox.y = p.y - 8;
+      this.attackBox.y = handY;
       this.attackBox.body.enable = true;
       this.attackBox.body.reset(this.attackBox.x, this.attackBox.y);
 
-      // "HIGH FIVE!" pop-in
+      // "HIGH FIVE!" pop-in (above the player's head)
       this.attackText.setText('HIGH FIVE!').setVisible(true).setAlpha(1).setScale(0.3);
       this.attackText.x = p.x + offX;
-      this.attackText.y = p.y - 60;
+      this.attackText.y = p.y - this.spriteH - 10;
       this.tweens.add({
         targets: this.attackText, scale: 1.1, duration: 100, ease: 'Back.easeOut'
       });
       this.tweens.add({
-        targets: this.attackText, y: p.y - 80, alpha: 0.6,
+        targets: this.attackText, y: p.y - this.spriteH - 30, alpha: 0.6,
         duration: 220, delay: 60
       });
     }
 
     if (p.attacking) {
-      const offX = p.facing * 30;
+      const offX = p.facing * 30 * this.characterScale;
       this.attackBox.x = p.x + offX;
-      this.attackBox.y = p.y - 8;
+      this.attackBox.y = p.y - this.spriteH * 0.55;
       if (this.attackBox.body.enable) {
         this.attackBox.body.reset(this.attackBox.x, this.attackBox.y);
       }
@@ -716,16 +683,15 @@ class GameScene extends Phaser.Scene {
         e.facing = dx > 0 ? 1 : -1;
         e.setFlipX(e.facing > 0);
 
-        if (dist > 26) {
+        if (dist > 8 * this.characterScale) {
           e.body.setVelocity((dx / dist) * e.speed, (dy / dist) * e.speed * 0.7);
         } else {
           e.body.setVelocity(0, 0);
         }
 
-        // Walk-cycle
+        // Single static frame for now — animations come later. The variant
+        // (one of 64 zombies on the sheet) was picked at spawn time.
         e.walkPhase += dt;
-        const f = Math.floor(e.walkPhase / 180) % 2;
-        e.setTexture(f === 0 ? 'zombie_walk1' : 'zombie_walk2');
 
         // Hit flash decay
         if (e.hitFlash > 0) {
@@ -735,13 +701,12 @@ class GameScene extends Phaser.Scene {
         }
       } else if (e.state === 'transformed') {
         // Walk off-screen toward the nearest exit, bobbing happily
-        e.body.setVelocity(e.exitDir * 110, 0);
+        e.body.setVelocity(e.exitDir * 30 * this.characterScale, 0);
         e.walkPhase += dt;
-        const f = Math.floor(e.walkPhase / 180) % 2;
-        e.setTexture(f === 0 ? 'zombie_happy' : 'zombie_happy');
-        e.y = e.transformedBaseY + Math.sin(e.walkPhase / 90) * 3;
+        e.setTexture('zombie_happy');
+        e.y = e.transformedBaseY + Math.sin(e.walkPhase / 90) * (this.characterScale * 0.8);
         e.setFlipX(e.exitDir > 0);
-        if (e.x < -60 || e.x > this.W + 60) {
+        if (e.x < -60 || e.x > this.worldW + 60) {
           this.activeEnemies--;
           e.destroy();
           this.checkWaveComplete();
@@ -772,9 +737,9 @@ class GameScene extends Phaser.Scene {
 
     // Knockback
     const dir = this.player.facing;
-    enemy.body.setVelocity(dir * 220, -40);
+    enemy.body.setVelocity(dir * 60 * this.characterScale, -12 * this.characterScale);
 
-    this.spawnBurst(enemy.x, enemy.y - 20);
+    this.spawnBurst(enemy.x, enemy.y - this.spriteH * 0.55);
     this.cameras.main.shake(50, 0.003);
 
     this.score += 50;
@@ -784,24 +749,28 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnBurst(x, y) {
-    const b = this.add.sprite(x, y, 'burst').setDepth(700).setScale(0.5);
+    const burstStart = 0.5 * this.characterScale;
+    const burstEnd   = 1.5 * this.characterScale;
+    const b = this.worldAdd(this.add.sprite(x, y, 'burst').setDepth(700).setScale(burstStart));
     this.tweens.add({
-      targets: b, scale: 1.5, alpha: 0, duration: 280,
+      targets: b, scale: burstEnd, alpha: 0, duration: 280,
       onComplete: () => b.destroy()
     });
     // Hearts / sparkles flying out
     const symbols = ['<3', '*', '~', '!'];
     const colors  = ['#ff5577', '#ffe066', '#80d8ff', '#80ff80'];
+    const radius  = 44 * this.characterScale * 0.6;
     for (let i = 0; i < 7; i++) {
-      const t = this.add.text(x, y, symbols[i % symbols.length], {
+      const t = this.worldAdd(this.add.text(x, y, symbols[i % symbols.length], {
         fontFamily: 'Courier New, monospace',
-        fontSize: '14px', color: colors[i % colors.length], fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(701);
+        fontSize: `${Math.round(14 * this.characterScale * 0.5)}px`,
+        color: colors[i % colors.length], fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(701));
       const a = (i / 7) * Math.PI * 2 + Math.random() * 0.4;
       this.tweens.add({
         targets: t,
-        x: x + Math.cos(a) * 44,
-        y: y + Math.sin(a) * 44 - 20,
+        x: x + Math.cos(a) * radius,
+        y: y + Math.sin(a) * radius - 20,
         alpha: 0, duration: 600,
         onComplete: () => t.destroy()
       });
@@ -812,27 +781,29 @@ class GameScene extends Phaser.Scene {
     e.state = 'transformed';
     e.setTexture('zombie_happy');
     e.body.setVelocity(0, 0);
-    e.exitDir = e.x < this.W / 2 ? -1 : 1;
+    e.exitDir = e.x < this.worldW / 2 ? -1 : 1;
     e.transformedBaseY = e.y;
 
     this.score += 200;
     this.updateScore();
 
-    // "+200 GOOD VIBES!" floater
-    const t = this.add.text(e.x, e.y - 40, '+200 GOOD VIBES!', {
+    // "+200 GOOD VIBES!" floater (above the head)
+    const headY = e.y - this.spriteH;
+    const t = this.worldAdd(this.add.text(e.x, headY - 6, '+200 GOOD VIBES!', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '12px', color: '#80ff80',
-      stroke: '#0a3010', strokeThickness: 3, fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(800);
+      fontSize: `${Math.round(12 * this.characterScale * 0.5)}px`,
+      color: '#80ff80', stroke: '#0a3010', strokeThickness: 3, fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(800));
     this.tweens.add({
-      targets: t, y: e.y - 90, alpha: 0, duration: 900,
+      targets: t, y: headY - 60, alpha: 0, duration: 900,
       onComplete: () => t.destroy()
     });
 
-    // Triple burst for emphasis
-    this.spawnBurst(e.x, e.y - 20);
-    this.spawnBurst(e.x - 16, e.y - 30);
-    this.spawnBurst(e.x + 16, e.y - 10);
+    // Triple burst for emphasis (around the chest/head area)
+    const chestY = e.y - this.spriteH * 0.55;
+    this.spawnBurst(e.x, chestY);
+    this.spawnBurst(e.x - 16, chestY - 14);
+    this.spawnBurst(e.x + 16, chestY + 6);
 
     // Quick happy hop
     this.tweens.add({
@@ -851,15 +822,16 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.shake(120, 0.006);
 
     const dir = player.x < enemy.x ? -1 : 1;
-    player.body.setVelocity(dir * 240, -60);
+    player.body.setVelocity(dir * 65 * this.characterScale, -15 * this.characterScale);
 
-    const t = this.add.text(player.x, player.y - 50, '-10 MOOD', {
+    const headY = player.y - this.spriteH;
+    const t = this.worldAdd(this.add.text(player.x, headY - 6, '-10 MOOD', {
       fontFamily: 'Courier New, monospace',
-      fontSize: '12px', color: '#ff4040',
-      stroke: '#1a0a0a', strokeThickness: 3, fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(800);
+      fontSize: `${Math.round(12 * this.characterScale * 0.5)}px`,
+      color: '#ff4040', stroke: '#1a0a0a', strokeThickness: 3, fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(800));
     this.tweens.add({
-      targets: t, y: player.y - 90, alpha: 0, duration: 700,
+      targets: t, y: headY - 50, alpha: 0, duration: 700,
       onComplete: () => t.destroy()
     });
 
@@ -896,8 +868,17 @@ class GameScene extends Phaser.Scene {
     this.gameState = 'cleared';
     this.player.body.setVelocity(0, 0);
     this.attackBox.body.enable = false;
-    this.showCenterMessage('GOOD VIBES ONLY',
-      `SCORE: ${this.score.toString().padStart(7, '0')} — PRESS R TO REPLAY`, '#80ff80');
+
+    const nextIndex = this.levelIndex + 1;
+    if (nextIndex < LEVELS.length) {
+      // More levels — show "LEVEL CLEAR" then advance.
+      this.showCenterMessage('LEVEL CLEAR', `NEXT: ${LEVELS[nextIndex].name}`, '#80ff80');
+      this.time.delayedCall(2200, () => this.scene.restart({ level: nextIndex, score: this.score }));
+    } else {
+      // Final level — full victory screen.
+      this.showCenterMessage('GOOD VIBES ONLY',
+        `SCORE: ${this.score.toString().padStart(7, '0')} — PRESS R TO REPLAY`, '#80ff80');
+    }
   }
 }
 
@@ -907,11 +888,17 @@ class GameScene extends Phaser.Scene {
 
 const config = {
   type: Phaser.AUTO,
-  width: 960,
-  height: 540,
   parent: 'game-container',
   backgroundColor: '#0a0408',
   pixelArt: true,
+  scale: {
+    // Canvas matches the parent (full browser window). World/character
+    // dimensions are derived from the actual screen size in GameScene.create(),
+    // so no camera zoom is needed.
+    mode: Phaser.Scale.RESIZE,
+    width: '100%',
+    height: '100%'
+  },
   physics: {
     default: 'arcade',
     arcade: { gravity: { y: 0 }, debug: false }
