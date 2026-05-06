@@ -5,22 +5,30 @@
 // All art is generated from primitives via Phaser.Graphics.generateTexture.
 // =====================================================================
 
-const COLORS = {
-  // Bar interior (palette inspired by the concept art)
-  wallDark:       0x3a1a14,
-  wallMid:        0x5c2820,
-  wallLight:      0x7a3a2a,
-  floorDark:      0x3d2817,
-  floorMid:       0x6b4226,
-  floorLight:     0x8b5a36,
-  woodTrim:       0x2d1810,
-  warmLight:      0xe8b040,
-  redLantern:     0xc8332b,
-  redLanternGlow: 0xff5040,
-  signYellow:     0xe8b040,
-  signRed:        0xa02828,
-  tvFrame:        0x0a0a0a,
+// =====================================================================
+// Level data — add a new entry to ship a new level.
+// `bg` points at an image asset; `floorTop/Bottom` define the walkable
+// depth band (must match the perspective of the background art).
+// =====================================================================
+const LEVELS = [
+  {
+    id: '1-1',
+    name: 'ON THE ROCKS — 1-1',
+    bg: { key: 'bg_1_1', path: 'assets/bar-bg.png' },
+    width: 2000,
+    height: 666,
+    floorTop: 430,
+    floorBottom: 620,
+    playerStart: { x: 260, y: 580 },
+    waves: [
+      { count: 2, delay: 900 },
+      { count: 3, delay: 800 },
+      { count: 4, delay: 700 }
+    ]
+  }
+];
 
+const COLORS = {
   // Player (dark hair, black tee, jeans — matches concept art)
   pSkin:  0xe8b895,
   pHair:  0x2d1810,
@@ -47,19 +55,28 @@ const COLORS = {
 class GameScene extends Phaser.Scene {
   constructor() { super('GameScene'); }
 
+  init(data) {
+    const idx = (data && typeof data.level === 'number') ? data.level : 0;
+    this.levelIndex = Phaser.Math.Clamp(idx, 0, LEVELS.length - 1);
+    this.level = LEVELS[this.levelIndex];
+  }
+
+  preload() {
+    this.load.image(this.level.bg.key, this.level.bg.path);
+  }
+
   create() {
     this.W = this.scale.width;
     this.H = this.scale.height;
 
-    // The "depth band" — vertical slice the player can walk in (classic beat-em-up).
-    this.floorTop = 380;
-    this.floorBottom = 520;
+    this.floorTop    = this.level.floorTop;
+    this.floorBottom = this.level.floorBottom;
 
     this.createTextures();
     this.buildBackground();
 
     // ----- Player -----
-    this.player = this.physics.add.sprite(140, 470, 'player_idle');
+    this.player = this.physics.add.sprite(this.level.playerStart.x, this.level.playerStart.y, 'player_idle');
     this.player.body.setSize(36, 30).setOffset(6, 50);
     this.player.mood = 100;
     this.player.maxMood = 100;
@@ -97,11 +114,7 @@ class GameScene extends Phaser.Scene {
     // ----- Game state -----
     this.score = 0;
     this.waveIndex = 0;
-    this.waves = [
-      { count: 2, delay: 900 },
-      { count: 3, delay: 800 },
-      { count: 4, delay: 700 }
-    ];
+    this.waves = this.level.waves;
     this.gameState = 'playing'; // 'playing' | 'gameover' | 'cleared'
 
     // ----- Input -----
@@ -285,175 +298,14 @@ class GameScene extends Phaser.Scene {
   }
 
   // =====================================================================
-  // Background — drawn once into a static Graphics object.
+  // Background — single bitmap from the level config, anchored top-left.
   // =====================================================================
 
   buildBackground() {
-    const W = this.W, H = this.H, C = COLORS;
-    const g = this.add.graphics();
-
-    // Wall layers (light/mid/dark for depth)
-    g.fillStyle(C.wallDark, 1);
-    g.fillRect(0, 0, W, 380);
-    g.fillStyle(C.wallMid, 1);
-    g.fillRect(0, 60, W, 280);
-
-    // Wood trim where the wall meets the floor
-    g.fillStyle(C.woodTrim, 1);
-    g.fillRect(0, 340, W, 12);
-    g.fillStyle(C.floorMid, 1);
-    g.fillRect(0, 352, W, 6);
-    g.fillStyle(C.woodTrim, 1);
-    g.fillRect(0, 358, W, 4);
-
-    // Floor — wide planks with subtle plank seams
-    g.fillStyle(C.floorMid, 1);
-    g.fillRect(0, 362, W, H - 362);
-    g.fillStyle(C.floorDark, 1);
-    for (let x = 0; x < W; x += 80) g.fillRect(x, 362, 1, H - 362);
-    g.fillStyle(C.floorLight, 1);
-    for (let y = 380; y < H; y += 28) g.fillRect(0, y, W, 1);
-
-    // Ceiling band
-    g.fillStyle(0x1a0a08, 1);
-    g.fillRect(0, 0, W, 30);
-    g.fillStyle(0x3a2018, 1);
-    g.fillRect(0, 28, W, 4);
-
-    // Wall TVs (sports / shows)
-    this.drawTV(g,  80,  72, 110, 70, 0x404060);
-    this.drawTV(g, 240,  98, 130, 80, 0x508050);
-    this.drawTV(g, 410,  60, 140, 90, 0x806040);
-    this.drawTV(g, 590,  82, 130, 80, 0x404080);
-    this.drawTV(g, 770, 100, 130, 70, 0x804040);
-
-    // EXIT sign
-    g.fillStyle(0x2a0a0a, 1);  g.fillRect(540, 180, 60, 26);
-    g.fillStyle(0xff3030, 1);  g.fillRect(544, 184, 52, 18);
-    // Glow tint
-    g.fillStyle(0xff6060, 0.4); g.fillRect(540, 200, 60, 8);
-
-    // Beer brand discs
-    this.drawDiscSign(g, 200, 220, 24, 0xc8a050, 0x806020);
-    this.drawDiscSign(g, 260, 230, 22, 0xc83030, 0x801020);
-    this.drawDiscSign(g, 320, 220, 26, 0xe0d040, 0x806010);
-    this.drawDiscSign(g, 660, 220, 24, 0x303030, 0xc0c0c0);
-    this.drawDiscSign(g, 720, 230, 22, 0x80c060, 0x408030);
-
-    // Square poster signs
-    g.fillStyle(0x806020, 1); g.fillRect(370, 200, 50, 60);
-    g.fillStyle(0xe8b040, 1); g.fillRect(375, 205, 40, 50);
-    g.fillStyle(0x402810, 1); g.fillRect(440, 220, 40, 30);
-    g.fillStyle(0xc8a060, 1); g.fillRect(443, 223, 34, 24);
-
-    // Red pendant lanterns
-    this.drawLantern(g, 110, 56);
-    this.drawLantern(g, 380, 38);
-    this.drawLantern(g, 580, 38);
-    this.drawLantern(g, 850, 56);
-
-    // Warm hanging lamp
-    g.fillStyle(0x202020, 1);
-    g.fillRect(155, 30, 2, 90);
-    g.fillStyle(C.warmLight, 0.9);
-    g.fillTriangle(135, 120, 175, 120, 155, 90);
-    g.fillStyle(0xfff0c0, 0.5);
-    g.fillCircle(155, 130, 24);
-
-    // Window with city skyline (left)
-    g.fillStyle(0x102030, 1); g.fillRect(0, 200, 80, 140);
-    g.fillStyle(0x403828, 1);
-    g.fillRect(0, 198, 82, 4);
-    g.fillRect(78, 200, 4, 142);
-    g.fillRect(0, 268, 80, 2);
-    g.fillStyle(0x080814, 1);
-    g.fillRect(0,  280, 22, 60);
-    g.fillRect(22, 270, 16, 70);
-    g.fillRect(38, 286, 14, 54);
-    g.fillRect(52, 274, 12, 66);
-    g.fillRect(64, 282, 16, 58);
-    g.fillStyle(0xe0c060, 0.85);
-    [4, 10, 16, 26, 32, 44, 56, 68].forEach((x, i) => {
-      g.fillRect(x, 290 + (i % 3) * 6, 2, 2);
-    });
-
-    // Bar furniture in the foreground (decorative, doesn't block movement)
-    this.drawBarrel(g, 90, 470);
-    this.drawTable(g, 130, 460, 70);
-    this.drawStool(g, 50, 500);
-    this.drawStool(g, 220, 510);
-    this.drawTable(g, 800, 470, 130);
-    this.drawStool(g, 880, 510);
-    // Pint glass on the right table
-    g.fillStyle(0xfff0c0, 1);  g.fillRect(840, 458, 8, 12);
-    g.fillStyle(0xe8b040, 1);  g.fillRect(840, 460, 8, 8);
-    g.fillStyle(0xfff0c0, 0.6); g.fillRect(840, 458, 8, 3); // foam
-
-    g.setDepth(0);
-
-    // Soft warm light pools on the floor (additive feel via low alpha)
-    const pools = this.add.graphics().setDepth(1);
-    pools.fillStyle(0xe8b040, 0.08); pools.fillCircle(155, 460, 90);
-    pools.fillStyle(0xc8332b, 0.06);
-    pools.fillCircle(380, 460, 70);
-    pools.fillCircle(580, 460, 70);
-    pools.fillCircle(850, 460, 70);
-  }
-
-  drawTV(g, x, y, w, h, screenColor) {
-    g.fillStyle(0x0a0a0a, 1); g.fillRect(x - 4, y - 4, w + 8, h + 8);
-    g.fillStyle(0x1a1a1a, 1); g.fillRect(x, y, w, h);
-    g.fillStyle(screenColor, 1); g.fillRect(x + 4, y + 4, w - 8, h - 8);
-    g.fillStyle(0x000000, 0.3);
-    for (let i = 0; i < h - 8; i += 4) g.fillRect(x + 4, y + 4 + i, w - 8, 1);
-    // Suggestion of figures / sports content on screen
-    g.fillStyle(0xffffff, 0.6); g.fillRect(x + 10, y + 10, 8, 4);
-    g.fillStyle(0xffffff, 0.7); g.fillRect(x + 24, y + 14, 12, 6);
-    g.fillStyle(0xff4040, 0.75); g.fillRect(x + 40, y + 20, 6, 6);
-    g.fillStyle(0x4080ff, 0.6); g.fillRect(x + w - 22, y + 16, 10, 6);
-  }
-
-  drawDiscSign(g, x, y, r, fill, ring) {
-    g.fillStyle(ring, 1); g.fillCircle(x, y, r);
-    g.fillStyle(fill, 1); g.fillCircle(x, y, r - 3);
-    g.fillStyle(ring, 1); g.fillRect(x - r + 4, y - 2, r * 2 - 8, 4);
-  }
-
-  drawLantern(g, x, y) {
-    g.fillStyle(0x1a1a1a, 1); g.fillRect(x, 0, 2, y - 14);
-    g.fillStyle(0xff5040, 0.25); g.fillCircle(x, y, 24);
-    g.fillStyle(0xff5040, 0.45); g.fillCircle(x, y, 16);
-    g.fillStyle(0xc8332b, 1);    g.fillCircle(x, y, 12);
-    g.fillStyle(0xff8060, 1);    g.fillCircle(x - 3, y - 3, 4);
-    g.fillStyle(0x1a1a1a, 1);
-    g.fillRect(x - 4, y - 14, 8, 3);
-    g.fillRect(x - 6, y + 11, 12, 3);
-  }
-
-  drawBarrel(g, x, y) {
-    g.fillStyle(0x402810, 1); g.fillRect(x - 22, y - 50, 44, 50);
-    g.fillStyle(0x6b4226, 1); g.fillRect(x - 20, y - 48, 40, 46);
-    g.fillStyle(0x2a1a08, 1);
-    g.fillRect(x - 22, y - 44, 44, 3);
-    g.fillRect(x - 22, y - 24, 44, 3);
-    g.fillRect(x - 22, y - 6, 44, 3);
-    g.fillStyle(0x402810, 0.4);
-    for (let i = -16; i <= 16; i += 8) g.fillRect(x + i, y - 48, 1, 46);
-  }
-
-  drawTable(g, x, y, w) {
-    g.fillStyle(0x2a1a08, 1); g.fillRect(x - w / 2, y - 14, w, 14);
-    g.fillStyle(0x6b4226, 1); g.fillRect(x - w / 2, y - 14, w, 4);
-    g.fillStyle(0x8b5a36, 1); g.fillRect(x - w / 2 + 2, y - 13, w - 4, 1);
-  }
-
-  drawStool(g, x, y) {
-    g.fillStyle(0x402810, 1); g.fillCircle(x, y - 30, 11);
-    g.fillStyle(0x6b4226, 1); g.fillCircle(x, y - 31, 9);
-    g.fillStyle(0x2a1a08, 1);
-    g.fillRect(x - 8, y - 30, 2, 30);
-    g.fillRect(x + 6, y - 30, 2, 30);
-    g.fillRect(x - 1, y - 30, 2, 30);
+    this.add.image(0, 0, this.level.bg.key)
+      .setOrigin(0, 0)
+      .setDisplaySize(this.W, this.H)
+      .setDepth(0);
   }
 
   // =====================================================================
@@ -508,9 +360,9 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(1, 0).setDepth(52);
 
     // Level label (bottom)
-    this.add.text(this.W / 2, this.H - 16, 'ON THE ROCKS — 1-1', {
+    this.add.text(this.W / 2, this.H - 18, this.level.name, {
       fontFamily: 'Courier New, monospace',
-      fontSize: '11px', color: '#e8d4a0'
+      fontSize: '12px', color: '#e8d4a0'
     }).setOrigin(0.5, 0).setDepth(52);
 
     // Center message (used for wave intro / game over / clear)
@@ -586,7 +438,7 @@ class GameScene extends Phaser.Scene {
     const e = this.physics.add.sprite(x, y, 'zombie_walk1');
     e.body.setSize(36, 30).setOffset(6, 50);
     e.state = 'attacking';                       // 'attacking' | 'transformed'
-    e.speed = Phaser.Math.Between(40, 65);
+    e.speed = Phaser.Math.Between(85, 130);
     e.hp = 2;
     e.hitFlash = 0;
     e.attackCooldown = 0;
@@ -624,7 +476,7 @@ class GameScene extends Phaser.Scene {
     }
 
     let vx = 0, vy = 0;
-    const speed = 180;
+    const speed = 320;
     if (!p.attacking) {
       if (this.cursors.left.isDown  || this.keysWASD.A.isDown) vx = -speed;
       else if (this.cursors.right.isDown || this.keysWASD.D.isDown) vx =  speed;
@@ -905,13 +757,19 @@ class GameScene extends Phaser.Scene {
 // Phaser bootstrap
 // =====================================================================
 
+const BOOT_LEVEL = LEVELS[0];
+
 const config = {
   type: Phaser.AUTO,
-  width: 960,
-  height: 540,
   parent: 'game-container',
   backgroundColor: '#0a0408',
   pixelArt: true,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: BOOT_LEVEL.width,
+    height: BOOT_LEVEL.height
+  },
   physics: {
     default: 'arcade',
     arcade: { gravity: { y: 0 }, debug: false }
