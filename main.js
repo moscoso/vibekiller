@@ -29,6 +29,21 @@ const LEVELS = [
       { count: 3, delay: 800 },
       { count: 4, delay: 700 }
     ]
+  },
+  {
+    id: '1-2',
+    name: 'BACK ROOM — 1-2',
+    bg: { key: 'bg_1_2', path: 'assets/bar-bg2.png' },
+    worldScreensWide: 1.8,
+    characterHeightFraction: 0.45,
+    floorTopFraction: 0.72,
+    floorBottomFraction: 0.94,
+    playerStart: { xFraction: 0.08, yFraction: 0.92 },
+    waves: [
+      { count: 3, delay: 800 },
+      { count: 4, delay: 700 },
+      { count: 5, delay: 650 }
+    ]
   }
 ];
 
@@ -66,6 +81,8 @@ class GameScene extends Phaser.Scene {
     const idx = (data && typeof data.level === 'number') ? data.level : 0;
     this.levelIndex = Phaser.Math.Clamp(idx, 0, LEVELS.length - 1);
     this.level = LEVELS[this.levelIndex];
+    // Score carries across level transitions and restarts; reset only on first boot.
+    this.carryScore = (data && typeof data.score === 'number') ? data.score : 0;
   }
 
   preload() {
@@ -151,7 +168,7 @@ class GameScene extends Phaser.Scene {
     this.enemiesToSpawn = 0;
 
     // ----- Game state -----
-    this.score = 0;
+    this.score = this.carryScore;
     this.waveIndex = 0;
     this.waves = this.level.waves;
     this.gameState = 'playing'; // 'playing' | 'gameover' | 'cleared'
@@ -194,7 +211,7 @@ class GameScene extends Phaser.Scene {
     if (this._resizeTimer) this._resizeTimer.remove(false);
     this._resizeTimer = this.time.delayedCall(200, () => {
       this._resizeTimer = null;
-      this.scene.restart();
+      this.scene.restart({ level: this.levelIndex, score: this.score });
     });
   }
 
@@ -524,7 +541,7 @@ class GameScene extends Phaser.Scene {
     e.body.setSize(36, 30).setOffset(6, 50);
     e.state = 'attacking';                       // 'attacking' | 'transformed'
     e.speed = Phaser.Math.Between(28, 42) * this.characterScale;
-    e.hp = 2;
+    e.hp = 1;
     e.hitFlash = 0;
     e.attackCooldown = 0;
     e.walkPhase = Math.random() * 1000;
@@ -544,7 +561,7 @@ class GameScene extends Phaser.Scene {
       this.updateEnemies(dt);
       this.updateMoodBar();
     }
-    if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart();
+    if (Phaser.Input.Keyboard.JustDown(this.keyR)) this.scene.restart({ level: this.levelIndex, score: this.score });
   }
 
   handleMovement(dt) {
@@ -844,8 +861,17 @@ class GameScene extends Phaser.Scene {
     this.gameState = 'cleared';
     this.player.body.setVelocity(0, 0);
     this.attackBox.body.enable = false;
-    this.showCenterMessage('GOOD VIBES ONLY',
-      `SCORE: ${this.score.toString().padStart(7, '0')} — PRESS R TO REPLAY`, '#80ff80');
+
+    const nextIndex = this.levelIndex + 1;
+    if (nextIndex < LEVELS.length) {
+      // More levels — show "LEVEL CLEAR" then advance.
+      this.showCenterMessage('LEVEL CLEAR', `NEXT: ${LEVELS[nextIndex].name}`, '#80ff80');
+      this.time.delayedCall(2200, () => this.scene.restart({ level: nextIndex, score: this.score }));
+    } else {
+      // Final level — full victory screen.
+      this.showCenterMessage('GOOD VIBES ONLY',
+        `SCORE: ${this.score.toString().padStart(7, '0')} — PRESS R TO REPLAY`, '#80ff80');
+    }
   }
 }
 
