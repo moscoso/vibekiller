@@ -89,7 +89,13 @@ class GameScene extends Phaser.Scene {
   preload() {
     this.load.image(this.level.bg.key, this.level.bg.path);
     this.load.image('friend', 'assets/FRIEND0.png');
-    this.load.image('zombie', 'assets/ZOMBIE0.png');
+    // 16-col x 4-row sheet of 96x256 cells = 64 zombie variants. Each frame
+    // has its zombie standing at the bottom of the cell, which lines up with
+    // the (0.5, 1.0) origin used at spawn.
+    this.load.spritesheet('zombies', 'assets/zombie_spritesheet.png', {
+      frameWidth: 96,
+      frameHeight: 256
+    });
   }
 
   create() {
@@ -225,9 +231,9 @@ class GameScene extends Phaser.Scene {
   // =====================================================================
 
   createTextures() {
-    // Player and sad-zombie sprites are bitmap assets loaded in preload()
-    // (keys: 'friend', 'zombie'). Only the post-transform happy zombie and
-    // the burst still use procedural textures.
+    // Player ('friend') and bad-vibe zombie variants ('zombies' spritesheet)
+    // are bitmap assets loaded in preload(). Only the post-transform happy
+    // zombie and the hit burst still use procedural textures.
     this.makeEnemyTexture('zombie_happy', 'happy', 0);
     this.makeBurstTexture();
   }
@@ -457,11 +463,14 @@ class GameScene extends Phaser.Scene {
     const fromLeft = Math.random() < 0.5;
     const x = fromLeft ? view.x - 40 : view.right + 40;
     const y = Phaser.Math.Between(this.floorTop + 20, this.floorBottom - 10);
-    const e = this.physics.add.sprite(x, y, 'zombie');
+    // Pick a random zombie variant from the 64-frame spritesheet.
+    const frame = Phaser.Math.Between(0, 63);
+    const e = this.physics.add.sprite(x, y, 'zombies', frame);
+    e.zombieFrame = frame;                    // remembered so we don't re-roll
     e.setOrigin(0.5, 1.0);                    // y = feet position (matches player)
     e.setScale(this.characterScale);
-    // Body: legs/feet area of the 107x222 ZOMBIE0 texture.
-    e.body.setSize(70, 80).setOffset(18, 142);
+    // Body: legs/feet area of the 96x256 zombie cell.
+    e.body.setSize(60, 90).setOffset(18, 165);
     e.state = 'attacking';                       // 'attacking' | 'transformed'
     e.speed = Phaser.Math.Between(28, 42) * this.characterScale;
     e.hp = 1;
@@ -599,9 +608,9 @@ class GameScene extends Phaser.Scene {
           e.body.setVelocity(0, 0);
         }
 
-        // Single static frame for now — animations come later.
+        // Single static frame for now — animations come later. The variant
+        // (one of 64 zombies on the sheet) was picked at spawn time.
         e.walkPhase += dt;
-        e.setTexture('zombie');
 
         // Hit flash decay
         if (e.hitFlash > 0) {
