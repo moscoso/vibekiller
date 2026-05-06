@@ -62,10 +62,44 @@ const LEVELS = [
 ];
 
 // Texture height of a character sprite, used to derive characterScale.
-// Matches the FRIEND0 player bitmap (88x212). Other character bitmaps
-// (zombie, etc.) render at the same scale and will appear slightly taller
-// or shorter based on their native pixel height.
-const CHARACTER_TEXTURE_H = 212;
+// Matches the standing-pose row of the player spritesheet (~74 px tall).
+// Other character bitmaps (zombies, etc.) scale relative to this.
+const CHARACTER_TEXTURE_H = 74;
+
+// Player spritesheet frame coordinates (atlas, registered in create()).
+// Source image: assets/player_spritesheet.png (600x343), 4 rows of 8 frames.
+// Frames are non-uniform — each pose has its own bbox. Each row anchors to
+// the row's bottom edge (feet line up across frames within a row).
+const PLAYER_FRAMES = {
+  // Row 1 — walk cycle
+  walk: [
+    { x: 21,  y: 8,   w: 38, h: 74 }, { x: 95,  y: 8,   w: 37, h: 74 },
+    { x: 168, y: 8,   w: 39, h: 74 }, { x: 240, y: 8,   w: 39, h: 74 },
+    { x: 309, y: 8,   w: 38, h: 74 }, { x: 385, y: 8,   w: 39, h: 74 },
+    { x: 460, y: 8,   w: 37, h: 74 }, { x: 532, y: 8,   w: 37, h: 74 }
+  ],
+  // Row 2 — run cycle
+  run: [
+    { x: 22,  y: 94,  w: 38, h: 73 }, { x: 97,  y: 94,  w: 40, h: 73 },
+    { x: 166, y: 94,  w: 43, h: 73 }, { x: 239, y: 94,  w: 52, h: 73 },
+    { x: 307, y: 94,  w: 56, h: 73 }, { x: 382, y: 94,  w: 54, h: 73 },
+    { x: 459, y: 94,  w: 41, h: 73 }, { x: 531, y: 94,  w: 38, h: 73 }
+  ],
+  // Row 3 — attack / strike poses
+  attack: [
+    { x: 20,  y: 179, w: 39, h: 74 }, { x: 92,  y: 179, w: 44, h: 74 },
+    { x: 175, y: 179, w: 42, h: 74 }, { x: 239, y: 179, w: 44, h: 74 },
+    { x: 314, y: 179, w: 40, h: 74 }, { x: 387, y: 179, w: 46, h: 74 },
+    { x: 459, y: 179, w: 37, h: 74 }, { x: 531, y: 179, w: 37, h: 74 }
+  ],
+  // Row 4 — crouch poses
+  crouch: [
+    { x: 29,  y: 268, w: 31, h: 61 }, { x: 102, y: 268, w: 32, h: 61 },
+    { x: 176, y: 268, w: 33, h: 61 }, { x: 246, y: 268, w: 32, h: 61 },
+    { x: 320, y: 268, w: 32, h: 61 }, { x: 392, y: 268, w: 33, h: 61 },
+    { x: 463, y: 268, w: 33, h: 61 }, { x: 538, y: 268, w: 33, h: 61 }
+  ]
+};
 
 // Good Vibe (post-transform happy zombie) — bright, joyful. The player and
 // "bad vibe" zombie are bitmap assets, so only the happy palette lives here.
@@ -88,7 +122,10 @@ class GameScene extends Phaser.Scene {
 
   preload() {
     this.load.image(this.level.bg.key, this.level.bg.path);
-    this.load.image('friend', 'assets/FRIEND0.png');
+    // Player spritesheet: 4 anim rows (walk / run / attack / crouch), 8 frames
+    // each. Frames are non-uniform — registered as named atlas regions in
+    // registerPlayerFrames() after the texture loads.
+    this.load.image('player_sheet', 'assets/player_spritesheet.png');
     // 16-col x 4-row sheet of 96x256 cells = 64 zombie variants. Each frame
     // has its zombie standing at the bottom of the cell, which lines up with
     // the (0.5, 1.0) origin used at spawn.
@@ -96,6 +133,27 @@ class GameScene extends Phaser.Scene {
       frameWidth: 96,
       frameHeight: 256
     });
+  }
+
+  registerPlayerFrames() {
+    // Add named regions to the player_sheet texture so we can play sprite
+    // animations like walk_0..7, run_0..7, attack_0..7, crouch_0..7.
+    const tex = this.textures.get('player_sheet');
+    for (const animKey of Object.keys(PLAYER_FRAMES)) {
+      PLAYER_FRAMES[animKey].forEach((f, i) => {
+        const name = `${animKey}_${i}`;
+        if (!tex.has(name)) tex.add(name, 0, f.x, f.y, f.w, f.h);
+      });
+    }
+    const mkAnim = (key, prefix, frameRate, repeat) => {
+      if (this.anims.exists(key)) return;
+      const frames = PLAYER_FRAMES[prefix].map((_, i) => ({ key: 'player_sheet', frame: `${prefix}_${i}` }));
+      this.anims.create({ key, frames, frameRate, repeat });
+    };
+    mkAnim('p_walk',   'walk',   10, -1);
+    mkAnim('p_run',    'run',    14, -1);
+    mkAnim('p_attack', 'attack', 18,  0);
+    mkAnim('p_crouch', 'crouch',  8, -1);
   }
 
   create() {
@@ -126,17 +184,19 @@ class GameScene extends Phaser.Scene {
     this.worldAdd   = (obj) => { this.worldLayer.add(obj); return obj; };
 
     this.createTextures();
+    this.registerPlayerFrames();
     this.buildBackground();
 
     // ----- Player -----
     const startX = this.worldW  * this.level.playerStart.xFraction;
     const startY = this.screenH * this.level.playerStart.yFraction;
-    this.player = this.physics.add.sprite(startX, startY, 'friend');
+    this.player = this.physics.add.sprite(startX, startY, 'player_sheet', 'walk_0');
     this.player.setOrigin(0.5, 1.0);          // y = feet position
     this.player.setScale(this.characterScale);
-    // Body: legs/feet area of the 88x212 FRIEND0 texture. Phaser scales
+    // Body covers the lower 30 of the ~74-tall walk frames. Phaser scales
     // body dimensions with sprite.scale, so these are in TEXTURE units.
-    this.player.body.setSize(60, 80).setOffset(14, 132);
+    // Body x is centered on the most common ~38-wide walk frame.
+    this.player.body.setSize(22, 30).setOffset(8, 44);
     this.player.mood = 100;
     this.player.maxMood = 100;
     this.player.attacking = false;
@@ -145,13 +205,15 @@ class GameScene extends Phaser.Scene {
     this.player.invuln = 0;
     this.player.facing = 1;
     this.player.walkPhase = 0;
+    this.player.crouching = false;
+    this.player.running = false;
     this.worldAdd(this.player);
 
     // Attack hitbox — invisible rect, enabled only during the attack window.
     // Sized in world units (already scaled). Reach is in TEXTURE units of
-    // the player sprite (88x212), then scaled to world.
-    const reachW = 160 * this.characterScale;
-    const reachH = 100 * this.characterScale;
+    // the player sprite (~38x74 walk frame), then scaled to world.
+    const reachW = 56 * this.characterScale;
+    const reachH = 36 * this.characterScale;
     this.attackBox = this.add.rectangle(0, 0, reachW, reachH, 0xffe066, 0);
     this.physics.add.existing(this.attackBox);
     this.attackBox.body.setAllowGravity(false);
@@ -188,6 +250,8 @@ class GameScene extends Phaser.Scene {
     this.keysWASD = this.input.keyboard.addKeys('W,A,S,D');
     this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.keyR     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+    this.keyShift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+    this.keyC     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
 
     // ----- Collisions -----
     this.physics.add.overlap(this.player, this.enemies, this.handleContact, null, this);
@@ -342,15 +406,14 @@ class GameScene extends Phaser.Scene {
     strip.fillStyle(0x000000, 0.45);
     strip.fillRect(0, 0, this.W, 40 * u);
 
-    // Player portrait box — head/shoulders crop of the FRIEND0 bitmap.
+    // Player portrait box — uses the first walk frame from the player sheet.
     const portrait = HUD(this.add.graphics()).setDepth(51);
     portrait.fillStyle(0x1a0a08, 1);    portrait.fillRect(8 * u, 6 * u, 32 * u, 30 * u);
     portrait.lineStyle(1, 0xe8d4a0, 1); portrait.strokeRect(8 * u, 6 * u, 32 * u, 30 * u);
-    const portImg = HUD(this.add.image(24 * u, 21 * u, 'friend')).setDepth(52);
-    // FRIEND0 is 88x212; show the top ~88x88 (head+shoulders) inside the 32x30 box.
-    portImg.setCrop(0, 0, 88, 88);
+    const portImg = HUD(this.add.image(24 * u, 21 * u, 'player_sheet', 'walk_0')).setDepth(52);
     portImg.setOrigin(0.5);
-    portImg.setScale((28 * u) / 88);
+    // Walk frame is ~38x74; fit it inside the ~28x28 inner box by height.
+    portImg.setScale((28 * u) / 74);
 
     HUD(this.add.text(46 * u, 5 * u, '1P', {
       fontFamily: 'Courier New, monospace',
@@ -510,8 +573,18 @@ class GameScene extends Phaser.Scene {
       }
     }
 
+    // Movement modifiers — Shift = run (faster), C = crouch (much slower)
+    const wantCrouch = this.keyC.isDown && !p.attacking;
+    const wantRun    = this.keyShift.isDown && !wantCrouch && !p.attacking;
+    p.crouching = wantCrouch;
+    p.running   = wantRun;
+
+    const walkSpeed   =  90 * this.characterScale;
+    const runSpeed    = 160 * this.characterScale;
+    const crouchSpeed =  35 * this.characterScale;
+    const speed = wantCrouch ? crouchSpeed : (wantRun ? runSpeed : walkSpeed);
+
     let vx = 0, vy = 0;
-    const speed = 90 * this.characterScale;
     if (!p.attacking) {
       if (this.cursors.left.isDown  || this.keysWASD.A.isDown) vx = -speed;
       else if (this.cursors.right.isDown || this.keysWASD.D.isDown) vx =  speed;
@@ -530,15 +603,22 @@ class GameScene extends Phaser.Scene {
     // Pseudo-3D: deeper rows render below closer rows
     p.setDepth(p.y);
 
-    // Facing
+    // Facing — only flip on horizontal input so vertical-only movement keeps the last facing
     if (vx > 0) p.facing = 1;
     else if (vx < 0) p.facing = -1;
     p.setFlipX(p.facing < 0);
 
-    // Single static frame for now — animations come later.
+    // Animation selection (attack anim is started in handleAttack)
     if (!p.attacking) {
-      if (vx !== 0 || vy !== 0) p.walkPhase += dt;
-      p.setTexture('friend');
+      if (wantCrouch) {
+        p.anims.play('p_crouch', true);
+      } else if (vx !== 0 || vy !== 0) {
+        p.anims.play(wantRun ? 'p_run' : 'p_walk', true);
+      } else {
+        // Idle — first walk frame, animation paused
+        p.anims.stop();
+        p.setFrame('walk_0');
+      }
     }
 
     // Invuln flicker
@@ -550,10 +630,11 @@ class GameScene extends Phaser.Scene {
 
     if (Phaser.Input.Keyboard.JustDown(this.keySpace) && p.cooldown <= 0 && !p.attacking) {
       p.attacking = true;
-      p.attackTimer = 220;
-      p.cooldown = 320;
-      // No attack frame yet — keep base sprite; animations come later.
-      p.setTexture('friend');
+      // Attack anim is 8 frames at 18fps = ~444ms; keep gameplay window slightly
+      // shorter so the swing feels snappy.
+      p.attackTimer = 360;
+      p.cooldown = 420;
+      p.anims.play('p_attack', true);
       this.currentAttackHits.clear();
 
       // Position the hitbox at the player's hand height (~midbody, slightly above center).
